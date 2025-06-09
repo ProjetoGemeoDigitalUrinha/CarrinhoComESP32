@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="favicon.png"/>
+    <title>URA IoT</title>
+    <link rel="stylesheet" href="style.css"/>
+  </head>
+  <body>
+    <div class="main">
+      <div class="left">
+        <div class="left-logo">
+          <div class="logo">
+            <img
+              src="logo.svg"
+              alt="Logo do Projeto Educacional URA"
+            />
+          </div>
+          <form id="action">
+            <h1>
+              <span class="first-word">URA:</span>
+              <span class="second-word">UM ROBÔ POR ALUNO</span>
+            </h1>
+            <div class="name-comando"><span>Digite um comando </span></div>
+            <input type="text" placeholder="Escreva seu comando aqui..." />
+            <button type="submit" class="custom-button">Enviar</button>
+          </form>
+        </div>
+      </div>
+      <div class="linediv">
+        <img src="line.svg" class="line" />
+      </div>
+      <div class="right">
+        <h1>CONTROLE</h1>
+        <div class="icons">
+          <div class="icons-top">
+            <button class="btns-frontb" onclick="move('/frt');">
+              <img
+                src="upbutton.svg"
+                alt="Sinais Controles"
+                class="icons-image"
+              />
+            </button>
+          </div>
+          <div class="icons-center">
+            <button class="btns-leftb" onclick="move('/esq');">
+              <img
+                src="leftbutton.svg"
+                alt="Sinais Controles"
+                class="icons-image"
+              />
+            </button>
+            <button class="btns-stopb" onclick="move('/stop');">
+              <img
+                src="stopbutton.svg"
+                alt="Sinais Controles"
+                class="icons-image"
+              />
+            </button>
+            <button class="btns-rightb" onclick="move('/drt');">
+              <img
+                src="rightbutton.svg"
+                alt="Sinais Controles"
+                class="icons-image"
+              />
+            </button>
+          </div>
+          <div class="icons-botton">
+            <button class="btns-backb" onclick="move('/trs');">
+              <img
+                src="downbutton.svg"
+                alt="Sinais Controles"
+                class="icons-image"
+              />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>
