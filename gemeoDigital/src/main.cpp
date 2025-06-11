@@ -1,4 +1,4 @@
-#include <Arduino.h>
+/*#include <Arduino.h>
 #include <SimpleFTPServer.h>
 #include <ArduinoJson.h>
 #include "L9110H.h"
@@ -323,7 +323,7 @@ void loop() {
     }
   }
 }
-
+*/
 // --- Fim do código ---
 // Certifique-se de que o arquivo config.json esteja presente no SPIFFS com as chaves "ssid" e "password".
 // Exemplo de config.json:
@@ -617,7 +617,7 @@ namespace MPU6050Handler {
     Serial.println("Initializing MPU6050 sensors...");
 
     // Initialize MPU1 (default address 0x68)
-    if (!mpu1.begin(0x68)) {
+    if (!mpu1.begin()) {
       Serial.println("Failed to find MPU6050 #1. Check connections!");
       while (1) delay(10);
     }
@@ -627,7 +627,7 @@ namespace MPU6050Handler {
     Serial.println("MPU6050 #1 connected and configured.");
 
     // Initialize MPU2 (address 0x69)
-    if (!mpu2.begin(0x69)) {
+    if (!mpu2.begin((uint8_t)105U)) {
       Serial.println("Failed to find MPU6050 #2. Check connections and AD0 jumper!");
       while (1) delay(10);
     }
@@ -672,7 +672,15 @@ namespace FFTHandler {
 
 void setup() {
   Serial.begin(115200);
-
+  
+  //Alimentação dos MPU6050s
+  pinMode(26, OUTPUT); // Pino 26 para alimentar MPU1
+  pinMode(27, OUTPUT); // Pino 27 para alimentar MPU2
+  digitalWrite(26, HIGH); // Liga MPU1
+  digitalWrite(27, HIGH); // Liga MPU2
+  //Alimentação do magnetômetro
+  pinMode(25, OUTPUT); // Pino 25 para alimentar o magnetômetro
+  digitalWrite(25, HIGH); // Liga o magnetômetro
   MPU6050Handler::setupMPU6050s();
 
   if (!SPIFFS.begin(true)) {
@@ -705,6 +713,8 @@ void setup() {
 }
 
 void loop() {
+  delay(1); // Small delay to avoid watchdog timer reset
+  // Handle FTP server requests
   ftpSrv.handleFTP();
 
   // --- Process MPU1 data ---

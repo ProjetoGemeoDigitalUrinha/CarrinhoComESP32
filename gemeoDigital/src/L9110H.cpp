@@ -13,7 +13,7 @@ void L9110H::motor(int motorNumber, String instruction, int speed) {
 
         case 1: {
             pinA = 13;
-            pinB = 12;
+            pinB = 33;
             break;
         }
 
