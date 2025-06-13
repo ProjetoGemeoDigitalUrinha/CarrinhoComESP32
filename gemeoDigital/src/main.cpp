@@ -784,8 +784,11 @@ void loop() {
     vReal1[sampleCounter1] = a1.acceleration.z; // Using Z-axis for vibration
     vImag1[sampleCounter1] = 0.0;
     sampleCounter1++;
-
     if (sampleCounter1 >= SAMPLES) {
+      Serial.print("MPU 1: ");
+      Serial.println("Pitch: " + String(orientationX_1, 2) + 
+                     ", Roll: " + String(orientationY_1, 2) + 
+                     ", Yaw: " + String(orientationZ_1, 2));
       FFTHandler::processFFT(vReal1, vImag1, currentVibrationMagnitude1, dominantVibrationFrequency1, dominantVibrationAmplitude1);
       sampleCounter1 = 0;
     }
@@ -823,6 +826,10 @@ void loop() {
     sampleCounter2++;
 
     if (sampleCounter2 >= SAMPLES) {
+      Serial.print("MPU 2: ");
+      Serial.println("Pitch: " + String(orientationX_2, 2) + 
+                     ", Roll: " + String(orientationY_2, 2) + 
+                     ", Yaw: " + String(orientationZ_2, 2));
       FFTHandler::processFFT(vReal2, vImag2, currentVibrationMagnitude2, dominantVibrationFrequency2, dominantVibrationAmplitude2);
       sampleCounter2 = 0;
     }
