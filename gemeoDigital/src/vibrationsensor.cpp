@@ -4,19 +4,19 @@ VibrationSensor::VibrationSensor(int pin) : pin(pin) {
     pinMode(pin, INPUT);
 }
 bool VibrationSensor::isVibrationDetected() {
-    return digitalRead(pin) == HIGH; // Retorna true se o pino estiver em nível alto
+    return digitalRead(pin) == HIGH; // RETURONA TRUE SE O PINO ESTIVER ALTO
 }
 int VibrationSensor::getVibrationLevel() {
-    return analogRead(pin); // Retorna o nível de vibração (0-1023)
+    return analogRead(pin); // RETORNA O NÍVEL DE VIBRAÇÃO (0-1023)
 }
 int VibrationSensor::getPin() const {
-    return pin; // Retorna o número do pino
+    return pin; // RETORNA O NÚMERO DO PINO
 }
 void VibrationSensor::setPin(int pin) {
-    this->pin = pin; // Define o número do pino
-    pinMode(pin, INPUT); // Configura o novo pino como entrada
+    this->pin = pin; // DEFINE O NÚMERO DO PINO
+    pinMode(pin, INPUT); // CONFIGURA O NOVO PINO COMO ENTRADA
 }
 
 void VibrationSensor::setup() {
-    pinMode(pin, INPUT); // Configura o pino como entrada
+    pinMode(pin, INPUT); // CONFIGURA O PINO COMO ENTRADA
 }

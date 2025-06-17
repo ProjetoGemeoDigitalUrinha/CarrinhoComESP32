@@ -1,5 +1,4 @@
 #include "L9110H.h"
-
 #include <Arduino.h>
 
 L9110H::L9110H() {
@@ -8,26 +7,21 @@ L9110H::L9110H() {
 }
 
 void L9110H::motor(int motorNumber, String instruction, int speed) {
-
     switch (motorNumber) {
-
         case 1: {
             pinA = 13;
             pinB = 33;
             break;
         }
-
         case 2: {
             pinA = 14;
             pinB = 23;
             break;
         }
-
         default: {
             break;
         }
     }
-
     if (instruction == "FORWARD") {
         analogWrite(pinB, 1);
         analogWrite(pinA, speed);
@@ -43,9 +37,7 @@ void L9110H::motor(int motorNumber, String instruction, int speed) {
 void L9110H::forward(int i, int seconds, bool hasStop) {
     motor(1, "BACKWARD", i);
     motor(2, "FORWARD", i);
-
     delay(seconds);
-
     if (hasStop) {
         stop();
     }
@@ -54,9 +46,7 @@ void L9110H::forward(int i, int seconds, bool hasStop) {
 void L9110H::backward(int i, int seconds, bool hasStop) {
     motor(1, "FORWARD", i);
     motor(2, "BACKWARD", i);
-
     delay(seconds);
-
     if (hasStop) {
         stop();
     }
@@ -65,9 +55,7 @@ void L9110H::backward(int i, int seconds, bool hasStop) {
 void L9110H::right(int i, int seconds, bool hasStop) {
     motor(1, "BACKWARD", i);
     motor(2, "BACKWARD", i);
-
     delay(seconds);
-
     if (hasStop) {
         stop();
     }
@@ -76,9 +64,7 @@ void L9110H::right(int i, int seconds, bool hasStop) {
 void L9110H::left(int i, int seconds, bool hasStop) {
     motor(1, "FORWARD", i);
     motor(2, "FORWARD", i);
-
     delay(seconds);
-
     if (hasStop) {
         stop();
     }
