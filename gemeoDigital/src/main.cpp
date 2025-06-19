@@ -17,21 +17,25 @@
 const float PITCH_MULTIPLIER_1 = 1.0;
 const float ROLL_MULTIPLIER_1  = 1.0;
 const float YAW_MULTIPLIER_1   = 1.0;
-const float PITCH_OFFSET_1 = -6.4;
-const float ROLL_OFFSET_1  = 0.9;
+const float PITCH_OFFSET_1 = -3.6;
+const float ROLL_OFFSET_1  = 1.3;
 const float YAW_OFFSET_1   = 0.0;
 
 // --- MPU 2 (0x69) ---
 const float PITCH_MULTIPLIER_2 = -1.0;
 const float ROLL_MULTIPLIER_2  = -1.0;
 const float YAW_MULTIPLIER_2   = -1.0;
-const float PITCH_OFFSET_2 = -1.9;
-const float ROLL_OFFSET_2  = -1.4;
+const float PITCH_OFFSET_2 = 1.0;
+const float ROLL_OFFSET_2  = -0.8;
 const float YAW_OFFSET_2   = 0.0;
+
+// --- SENSOR ULTRASSÔNICO ---
+const int TRIG_PIN = 5;
+const int ECHO_PIN = 18;
 
 // --- CONSTANTES E CONFIGURAÇÕES ---
 constexpr uint16_t SAMPLES = 256;
-constexpr double SAMPLING_FREQ = 500.0;
+constexpr double SAMPLING_FREQ = 1000.0;
 
 // --- OBJETOS GLOBAIS ---
 L9110H robot;
@@ -66,9 +70,26 @@ float accelerationX_2, accelerationY_2, accelerationZ_2; // ACELERAÇÃO LINEAR
 float rotationX_2, rotationY_2, rotationZ_2;             // VELOCIDADE ANGULAR
 float orientationX_2, orientationY_2, orientationZ_2;     // DIREÇÃO/ORIENTAÇÃO
 
+// --- VARIÁVEIS GLOBAIS PARA O SENSOR ULTRASSÔNICO ---
+float distance_cm = 0.0;
+unsigned long last_ultrasonic_read_time = 0;
+
+// --- FUNÇÃO PARA LER O SENSOR ULTRASSÔNICO ---
+void readUltrasonicDistance() {
+    digitalWrite(TRIG_PIN, LOW);
+    delayMicroseconds(2);
+    digitalWrite(TRIG_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG_PIN, LOW);
+    long duration = pulseIn(ECHO_PIN, HIGH, 25000);
+    distance_cm = (duration * 0.0343) / 2.0;
+    if (distance_cm > 400 || distance_cm <= 0) {
+        distance_cm = 0;
+    }
+}
+
 
 // --- ENCAPSULAMENTO DE FUNCIONALIDADES ---
-
 namespace WebHandlers {
   void handleStaticFiles() {
     auto serveFile = [](const char* path, const char* type = nullptr) {
@@ -223,11 +244,19 @@ namespace WebHandlers {
     });
   }
 
+  // --- HANDLER PARA O SENSOR ULTRASSÔNICO ---
+  void handleUltrasonicEndpoint() {
+    server.on("/distance", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(200, "text/plain", String(distance_cm, 2));
+    });
+  }
+
   void setupAll() {
     handleStaticFiles();
     handleRobotCommands();
     handleVibrationEndpoints();
     handleMPU6050DataEndpoints();
+    handleUltrasonicEndpoint();
   }
 }
 
@@ -281,9 +310,14 @@ namespace FFTHandler {
 }
 
 // --- FUNÇÕES PRINCIPAIS ---
-
 void setup() {
   Serial.begin(115200);
+
+  // --- CONFIGURAÇÃO DOS PINOS DO SENSOR ULTRASSÔNICO ---
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  Serial.println("Ultrasonic sensor pins configured.");
+
   MPU6050Handler::setupMPU6050s();
   if (!SPIFFS.begin(true)) {
     Serial.println("Can't initialize SPIFFS, please restart and try again.");
@@ -314,8 +348,14 @@ void loop() {
   delay(1); // PEQUENO DELAY PARA EVITAR O RESET DO WATCHDOG TIMER
   ftpSrv.handleFTP();
 
+  // --- LEITURA DO SENSOR ULTRASSÔNICO SEM IMPRESSÃO ---
+  if (millis() - last_ultrasonic_read_time > 250) { 
+      last_ultrasonic_read_time = millis();
+      readUltrasonicDistance();
+  }
+
   // --- PROCESSAR DADOS DO MPU 1 (0x68) ---
-  if (micros()-lastSampleTime1 >= (1000000/SAMPLING_FREQ)) {
+  if (micros() - lastSampleTime1 >= (1000000 / SAMPLING_FREQ)) {
     lastSampleTime1 = micros();
     sensors_event_t a1, g1, temp1;
     mpu1.getEvent(&a1, &g1, &temp1);
@@ -325,13 +365,14 @@ void loop() {
     rotationX_1 = g1.gyro.x;
     rotationY_1 = g1.gyro.y;
     rotationZ_1 = g1.gyro.z;
-    float raw_pitch_1 = atan2(-accelerationX_1, sqrt(accelerationY_1*accelerationY_1+accelerationZ_1*accelerationZ_1))*180.0/PI;
-    float raw_roll_1  = atan2(accelerationY_1, accelerationZ_1)*180.0/PI;
+    float raw_pitch_1 = atan2(-accelerationX_1, sqrt(accelerationY_1 * accelerationY_1 + accelerationZ_1 * accelerationZ_1)) * 180.0 / PI;
+    float raw_roll_1  = atan2(accelerationY_1, accelerationZ_1) * 180.0 / PI;
 
     // --- AJUSTES MANUAIS PARA PITCH, ROLL E YAW DO MPU 1 (0x68) ---
-    orientationX_1 = (raw_pitch_1*PITCH_MULTIPLIER_1)+PITCH_OFFSET_1;
-    orientationY_1 = (raw_roll_1*ROLL_MULTIPLIER_1)+ROLL_OFFSET_1;
+    orientationX_1 = (raw_pitch_1 * PITCH_MULTIPLIER_1) + PITCH_OFFSET_1;
+    orientationY_1 = (raw_roll_1 * ROLL_MULTIPLIER_1) + ROLL_OFFSET_1;
     // --- FIM DOS AJUSTES ---
+
     static Adafruit_HMC5883_Unified mag1 = Adafruit_HMC5883_Unified(12345);
     static bool magInitialized1 = false;
     static float fusedYaw1 = 0.0f;
@@ -345,29 +386,29 @@ void loop() {
       }
     }
     unsigned long now1 = micros();
-    float dt1 = (lastYawTime1 == 0) ? 0.0f : (now1-lastYawTime1)/1e6f;
+    float dt1 = (lastYawTime1 == 0) ? 0.0f : (now1 - lastYawTime1) / 1e6f;
     lastYawTime1 = now1;
     float magYaw1 = NAN;
     if (magInitialized1) {
       sensors_event_t mag_event1;
       mag1.getEvent(&mag_event1);
       magYaw1 = atan2(mag_event1.magnetic.y, mag_event1.magnetic.x);
-      if (magYaw1 < 0) magYaw1 += 2*PI;
-      magYaw1 = magYaw1*180.0f/PI;
+      if (magYaw1 < 0) magYaw1 += 2 * PI;
+      magYaw1 = magYaw1 * 180.0f / PI;
     }
     if (dt1 > 0 && fabs(rotationZ_1) < 100.0f) {
-      fusedYaw1 += rotationZ_1*dt1*180.0f/PI;
+      fusedYaw1 += rotationZ_1 * dt1 * 180.0f / PI;
     }
     if (!isnan(magYaw1)) {
-      const float alpha = 0.96f;
-      fusedYaw1 = alpha*fusedYaw1+(1.0f-alpha)*magYaw1;
+      const float alpha = 0.98f;
+      fusedYaw1 = alpha * fusedYaw1 + (1.0f - alpha) * magYaw1;
     }
-    while (fusedYaw1 < 0.0f) fusedYaw1 += 360.0f;
-    while (fusedYaw1 >= 360.0f) fusedYaw1 -= 360.0f;
-    orientationZ_1 = (fusedYaw1*YAW_MULTIPLIER_1)+YAW_OFFSET_1;
+    orientationZ_1 = (fusedYaw1 * YAW_MULTIPLIER_1) + YAW_OFFSET_1;
+    while (orientationZ_1 < 0.0f) orientationZ_1 += 360.0f;
+    while (orientationZ_1 >= 360.0f) orientationZ_1 -= 360.0f;
     currentVibrationMagnitude1 = sqrt(
-      pow(a1.acceleration.x, 2)+
-      pow(a1.acceleration.y, 2)+
+      pow(a1.acceleration.x, 2) +
+      pow(a1.acceleration.y, 2) +
       pow(a1.acceleration.z, 2)
     );
     vReal1[sampleCounter1] = a1.acceleration.z; // USANDO O EIXO Z PARA VIBRAÇÃO
@@ -375,16 +416,16 @@ void loop() {
     sampleCounter1++;
     if (sampleCounter1 >= SAMPLES) {
       Serial.print("MPU 1: ");
-      Serial.println("Pitch: "+String(orientationX_1, 2)+ 
-                     ", Roll: "+String(orientationY_1, 2)+ 
-                     ", Yaw: "+String(orientationZ_1, 2));
+      Serial.print("Pitch: "); Serial.print(orientationX_1, 2); Serial.print(" graus, ");
+      Serial.print("Roll: "); Serial.print(orientationY_1, 2); Serial.print(" graus, ");
+      Serial.print("Yaw: "); Serial.print(orientationZ_1, 2); Serial.println(" graus");
       FFTHandler::processFFT(vReal1, vImag1, currentVibrationMagnitude1, dominantVibrationFrequency1, dominantVibrationAmplitude1);
       sampleCounter1 = 0;
     }
   }
 
-  // --- PROCESSAR DADOS DO MP 2 (0x69) ---
-  if (micros()-lastSampleTime2 >= (1000000/SAMPLING_FREQ)) { // LASTSAMPLETIME SEPARADO PARA O MPU 2 (0x69)
+  // --- PROCESSAR DADOS DO MPU 2 (0x69) ---
+  if (micros() - lastSampleTime2 >= (1000000 / SAMPLING_FREQ)) {
     lastSampleTime2 = micros();
     sensors_event_t a2, g2, temp2;
     mpu2.getEvent(&a2, &g2, &temp2);
@@ -396,17 +437,17 @@ void loop() {
     rotationZ_2 = g2.gyro.z;
 
     // --- AJUSTES MANUAIS PARA PITCH, ROLL E YAW DO MPU 2 (0x69) ---
-    float raw_pitch_2 = atan2(-accelerationX_2, sqrt(accelerationY_2*accelerationY_2+accelerationZ_2*accelerationZ_2))*180.0/PI;
-    float raw_roll_2  = atan2(accelerationY_2, accelerationZ_2)*180.0/PI;
-    orientationX_2 = (raw_pitch_2*PITCH_MULTIPLIER_2)+PITCH_OFFSET_2;
-    orientationY_2 = (raw_roll_2*ROLL_MULTIPLIER_2)+ROLL_OFFSET_2;
-    float raw_yaw_2 = rotationZ_2*(180.0f/PI);
-    orientationZ_2 = (raw_yaw_2*YAW_MULTIPLIER_2)+YAW_OFFSET_2;
+    float raw_pitch_2 = atan2(-accelerationX_2, sqrt(accelerationY_2 * accelerationY_2 + accelerationZ_2 * accelerationZ_2)) * 180.0 / PI;
+    float raw_roll_2  = atan2(accelerationY_2, accelerationZ_2) * 180.0 / PI;
+    orientationX_2 = (raw_pitch_2 * PITCH_MULTIPLIER_2) + PITCH_OFFSET_2;
+    orientationY_2 = (raw_roll_2 * ROLL_MULTIPLIER_2) + ROLL_OFFSET_2;
+    float raw_yaw_2 = rotationZ_2 * (180.0f / PI); 
+    orientationZ_2 = (raw_yaw_2 * YAW_MULTIPLIER_2) + YAW_OFFSET_2;
     // --- FIM DOS AJUSTES ---
 
     currentVibrationMagnitude2 = sqrt(
-      pow(a2.acceleration.x, 2)+
-      pow(a2.acceleration.y, 2)+
+      pow(a2.acceleration.x, 2) +
+      pow(a2.acceleration.y, 2) +
       pow(a2.acceleration.z, 2)
     );
     vReal2[sampleCounter2] = a2.acceleration.z; // USANDO O EIXO Z PARA VIBRAÇÃO
@@ -414,10 +455,16 @@ void loop() {
     sampleCounter2++;
     if (sampleCounter2 >= SAMPLES) {
       Serial.print("MPU 2: ");
-      Serial.println("Pitch: "+String(orientationX_2, 2)+ 
-                     ", Roll: "+String(orientationY_2, 2)+ 
-                     ", Yaw: "+String(orientationZ_2, 2));
+      Serial.print("Pitch: "); Serial.print(orientationX_2, 2); Serial.print(" graus, ");
+      Serial.print("Roll: "); Serial.print(orientationY_2, 2); Serial.print(" graus, ");
+      Serial.print("Taxa do Yaw: "); Serial.print(orientationZ_2, 2); Serial.println(" m/s^2");
       FFTHandler::processFFT(vReal2, vImag2, currentVibrationMagnitude2, dominantVibrationFrequency2, dominantVibrationAmplitude2);
+
+      // --- IMPRESSÃO DO SENSOR ULTRASSÔNICO ---
+      Serial.print("Distância: ");
+      Serial.print(distance_cm, 2);
+      Serial.println(" cm");
+      Serial.println("--------------------------------------------------");
       sampleCounter2 = 0;
     }
   }
