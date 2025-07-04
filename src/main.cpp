@@ -427,7 +427,7 @@ void loop() {
       Serial.print("Taxa do Yaw: "); Serial.print(orientationZ_2, 2); Serial.println(" m/s^2");
       FFTHandler::processFFT(vReal2, vImag2, currentVibrationMagnitude2, dominantVibrationFrequency2, dominantVibrationAmplitude2);
       
-      // --- IMPRESSÃO DOS DADOS DE DISTÂNCIA (SONAR E ENCODERS) ---
+      // --- IMPRESSÃO DOS DADOS DE DISTÂNCIA ---
       noInterrupts();
       long currentDirCount = encoderDirCount;
       long currentEsqCount = encoderEsqCount;
