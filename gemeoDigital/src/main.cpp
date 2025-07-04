@@ -11,17 +11,21 @@
 #include <Adafruit_Sensor.h>
 #include <arduinoFFT.h>
 
-// --- PARÂMETROS DE AJUSTE MANUAL DOS MPUS ---
+// --- PARÂMETROS FÍSICOS ---
+const float DIAMETRO_RODA_CM = 6.5;
+const int PPR_ENCODER = 20;
+const int GEAR_RATIO = 48;
 
-// --- MPU 1 (0x68) ---
+// --- FATOR DE CONVERSÃO ---
+const float DISTANCIA_POR_PULSO_CM = (DIAMETRO_RODA_CM * PI) / (PPR_ENCODER * GEAR_RATIO);
+
+// --- PARÂMETROS DE AJUSTE MANUAL DOS MPUS ---
 const float PITCH_MULTIPLIER_1 = 1.0;
 const float ROLL_MULTIPLIER_1  = 1.0;
 const float YAW_MULTIPLIER_1   = 1.0;
 const float PITCH_OFFSET_1 = -3.6;
 const float ROLL_OFFSET_1  = 1.3;
 const float YAW_OFFSET_1   = 0.0;
-
-// --- MPU 2 (0x69) ---
 const float PITCH_MULTIPLIER_2 = -1.0;
 const float ROLL_MULTIPLIER_2  = -1.0;
 const float YAW_MULTIPLIER_2   = -1.0;
@@ -37,14 +41,22 @@ const int ECHO_PIN = 18;
 constexpr uint16_t SAMPLES = 256;
 constexpr double SAMPLING_FREQ = 1000.0;
 
+// --- PINOS DOS ENCODERS (1 CANAL) ---
+#define ENCODER_DIR_PIN 34
+#define ENCODER_ESQ_PIN 26
+
 // --- OBJETOS GLOBAIS ---
 L9110H robot;
 AsyncWebServer server(80);
 FtpServer ftpSrv;
 StaticJsonDocument<200> document;
-Adafruit_MPU6050 mpu1; // MPU 1 (0x68)
-Adafruit_MPU6050 mpu2; // MPU 2 (0x69)
+Adafruit_MPU6050 mpu1;
+Adafruit_MPU6050 mpu2;
 ArduinoFFT<double> FFT;
+
+// --- VARIÁVEIS GLOBAIS PARA OS ENCODERS (1 CANAL) ---
+volatile long encoderDirCount = 0;
+volatile long encoderEsqCount = 0;
 
 // --- VARIÁVEIS GLOBAIS PARA O MPU 1 (0x68)---
 double vReal1[SAMPLES];
@@ -54,9 +66,9 @@ float dominantVibrationFrequency1 = 0.0;
 float dominantVibrationAmplitude1 = 0.0;
 unsigned long lastSampleTime1 = 0;
 uint16_t sampleCounter1 = 0;
-float accelerationX_1, accelerationY_1, accelerationZ_1; // ACELERAÇÃO LINEAR
-float rotationX_1, rotationY_1, rotationZ_1;             // VELOCIDADE ANGULAR
-float orientationX_1, orientationY_1, orientationZ_1;     // DIREÇÃO/ORIENTAÇÃO
+float accelerationX_1, accelerationY_1, accelerationZ_1;
+float rotationX_1, rotationY_1, rotationZ_1;
+float orientationX_1, orientationY_1, orientationZ_1;
 
 // --- VARIÁVEIS GLOBAIS PARA O MPU 2 (0x69) ---
 double vReal2[SAMPLES];
@@ -66,13 +78,22 @@ float dominantVibrationFrequency2 = 0.0;
 float dominantVibrationAmplitude2 = 0.0;
 unsigned long lastSampleTime2 = 0;
 uint16_t sampleCounter2 = 0;
-float accelerationX_2, accelerationY_2, accelerationZ_2; // ACELERAÇÃO LINEAR
-float rotationX_2, rotationY_2, rotationZ_2;             // VELOCIDADE ANGULAR
-float orientationX_2, orientationY_2, orientationZ_2;     // DIREÇÃO/ORIENTAÇÃO
+float accelerationX_2, accelerationY_2, accelerationZ_2;
+float rotationX_2, rotationY_2, rotationZ_2;
+float orientationX_2, orientationY_2, orientationZ_2;
 
 // --- VARIÁVEIS GLOBAIS PARA O SENSOR ULTRASSÔNICO ---
 float distance_cm = 0.0;
 unsigned long last_ultrasonic_read_time = 0;
+
+// --- FUNÇÕES DE INTERRUPÇÃO (ISR) PARA OS ENCODERS ---
+void IRAM_ATTR isrEncoderDir() {
+  encoderDirCount++;
+}
+
+void IRAM_ATTR isrEncoderEsq() {
+  encoderEsqCount++;
+}
 
 // --- FUNÇÃO PARA LER O SENSOR ULTRASSÔNICO ---
 void readUltrasonicDistance() {
@@ -87,7 +108,6 @@ void readUltrasonicDistance() {
         distance_cm = 0;
     }
 }
-
 
 // --- ENCAPSULAMENTO DE FUNCIONALIDADES ---
 namespace WebHandlers {
@@ -157,7 +177,6 @@ namespace WebHandlers {
   }
 
   void handleVibrationEndpoints() {
-    // --- ENDPOINTS PARA O MPU 1 (0x68) ---
     server.on("/mpu1/vibration_magnitude", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", String(currentVibrationMagnitude1, 2));
     });
@@ -167,8 +186,6 @@ namespace WebHandlers {
     server.on("/mpu1/vibration_amplitude", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", String(dominantVibrationAmplitude1, 2));
     });
-
-    // --- ENDPOINTS PARA O MPU 2 (0x69) ---
     server.on("/mpu2/vibration_magnitude", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", String(currentVibrationMagnitude2, 2));
     });
@@ -180,71 +197,39 @@ namespace WebHandlers {
     });
   }
 
-  // --- HANDLERS PARA OS DADOS DO MPU 1 (0x68) ---
   void handleMPU6050DataEndpoints() {
     server.on("/mpu1/acceleration", HTTP_GET, [](AsyncWebServerRequest *request) {
       StaticJsonDocument<100> data;
-      data["x"] = String(accelerationX_1, 2);
-      data["y"] = String(accelerationY_1, 2);
-      data["z"] = String(accelerationZ_1, 2);
-      String jsonResponse;
-      serializeJson(data, jsonResponse);
-      request->send(200, "application/json", jsonResponse);
+      data["x"] = String(accelerationX_1, 2); data["y"] = String(accelerationY_1, 2); data["z"] = String(accelerationZ_1, 2);
+      String jsonResponse; serializeJson(data, jsonResponse); request->send(200, "application/json", jsonResponse);
     });
-
     server.on("/mpu1/rotation", HTTP_GET, [](AsyncWebServerRequest *request) {
       StaticJsonDocument<100> data;
-      data["x"] = String(rotationX_1, 2);
-      data["y"] = String(rotationY_1, 2);
-      data["z"] = String(rotationZ_1, 2);
-      String jsonResponse;
-      serializeJson(data, jsonResponse);
-      request->send(200, "application/json", jsonResponse);
+      data["x"] = String(rotationX_1, 2); data["y"] = String(rotationY_1, 2); data["z"] = String(rotationZ_1, 2);
+      String jsonResponse; serializeJson(data, jsonResponse); request->send(200, "application/json", jsonResponse);
     });
-
     server.on("/mpu1/orientation", HTTP_GET, [](AsyncWebServerRequest *request) {
       StaticJsonDocument<100> data;
-      data["pitch"] = String(orientationX_1, 2);
-      data["roll"] = String(orientationY_1, 2);
-      data["yaw"] = String(orientationZ_1, 2);
-      String jsonResponse;
-      serializeJson(data, jsonResponse);
-      request->send(200, "application/json", jsonResponse);
+      data["pitch"] = String(orientationX_1, 2); data["roll"] = String(orientationY_1, 2); data["yaw"] = String(orientationZ_1, 2);
+      String jsonResponse; serializeJson(data, jsonResponse); request->send(200, "application/json", jsonResponse);
     });
-
-    // --- HANDLERS PARA OS DADOS DO MPU 2 (0x69) ---
     server.on("/mpu2/acceleration", HTTP_GET, [](AsyncWebServerRequest *request) {
       StaticJsonDocument<100> data;
-      data["x"] = String(accelerationX_2, 2);
-      data["y"] = String(accelerationY_2, 2);
-      data["z"] = String(accelerationZ_2, 2);
-      String jsonResponse;
-      serializeJson(data, jsonResponse);
-      request->send(200, "application/json", jsonResponse);
+      data["x"] = String(accelerationX_2, 2); data["y"] = String(accelerationY_2, 2); data["z"] = String(accelerationZ_2, 2);
+      String jsonResponse; serializeJson(data, jsonResponse); request->send(200, "application/json", jsonResponse);
     });
-
     server.on("/mpu2/rotation", HTTP_GET, [](AsyncWebServerRequest *request) {
       StaticJsonDocument<100> data;
-      data["x"] = String(rotationX_2, 2);
-      data["y"] = String(rotationY_2, 2);
-      data["z"] = String(rotationZ_2, 2);
-      String jsonResponse;
-      serializeJson(data, jsonResponse);
-      request->send(200, "application/json", jsonResponse);
+      data["x"] = String(rotationX_2, 2); data["y"] = String(rotationY_2, 2); data["z"] = String(rotationZ_2, 2);
+      String jsonResponse; serializeJson(data, jsonResponse); request->send(200, "application/json", jsonResponse);
     });
-
     server.on("/mpu2/orientation", HTTP_GET, [](AsyncWebServerRequest *request) {
       StaticJsonDocument<100> data;
-      data["pitch"] = String(orientationX_2, 2);
-      data["roll"] = String(orientationY_2, 2);
-      data["yaw"] = String(orientationZ_2, 2);
-      String jsonResponse;
-      serializeJson(data, jsonResponse);
-      request->send(200, "application/json", jsonResponse);
+      data["pitch"] = String(orientationX_2, 2); data["roll"] = String(orientationY_2, 2); data["yaw"] = String(orientationZ_2, 2);
+      String jsonResponse; serializeJson(data, jsonResponse); request->send(200, "application/json", jsonResponse);
     });
   }
 
-  // --- HANDLER PARA O SENSOR ULTRASSÔNICO ---
   void handleUltrasonicEndpoint() {
     server.on("/distance", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", String(distance_cm, 2));
@@ -264,25 +249,17 @@ namespace MPU6050Handler {
   void setupMPU6050s() {
     Wire.begin();
     Serial.println("Initializing MPU6050 sensors...");
-
-    // --- INICIALIZAÇÃO DO MPU1 (0x68) ---
     if (!mpu1.begin()) {
       Serial.println("Failed to find MPU6050 #1. Check connections!");
       while (1) delay(10);
     }
-    mpu1.setAccelerometerRange(MPU6050_RANGE_8_G);
-    mpu1.setGyroRange(MPU6050_RANGE_500_DEG);
-    mpu1.setFilterBandwidth(MPU6050_BAND_21_HZ);
+    mpu1.setAccelerometerRange(MPU6050_RANGE_8_G); mpu1.setGyroRange(MPU6050_RANGE_500_DEG); mpu1.setFilterBandwidth(MPU6050_BAND_21_HZ);
     Serial.println("MPU6050 #1 connected and configured.");
-
-    // --- INICIALIZAÇÃO DO MPU2 (0x69) ---
     if (!mpu2.begin((uint8_t)105U)) {
       Serial.println("Failed to find MPU6050 #2. Check connections and AD0 jumper!");
       while (1) delay(10);
     }
-    mpu2.setAccelerometerRange(MPU6050_RANGE_8_G);
-    mpu2.setGyroRange(MPU6050_RANGE_500_DEG);
-    mpu2.setFilterBandwidth(MPU6050_BAND_21_HZ);
+    mpu2.setAccelerometerRange(MPU6050_RANGE_8_G); mpu2.setGyroRange(MPU6050_RANGE_500_DEG); mpu2.setFilterBandwidth(MPU6050_BAND_21_HZ);
     Serial.println("MPU6050 #2 connected and configured.");
   }
 }
@@ -305,7 +282,6 @@ namespace FFTHandler {
     Serial.print("Magnitude de Vibração Total (RMS): "); Serial.print(vibrationMagnitude, 2); Serial.println(" m/s^2");
     Serial.print("Frequencia de Vibração Dominante: "); Serial.print(dominantFrequency, 2); Serial.println(" Hz");
     Serial.print("Amplitude de Vibração Dominante: "); Serial.print(dominantAmplitude, 2); Serial.println(" m/s^2");
-    Serial.println("--------------------------------------------------");
   }
 }
 
@@ -313,48 +289,56 @@ namespace FFTHandler {
 void setup() {
   Serial.begin(115200);
 
-  // --- CONFIGURAÇÃO DOS PINOS DO SENSOR ULTRASSÔNICO ---
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   Serial.println("Ultrasonic sensor pins configured.");
 
+  pinMode(ENCODER_DIR_PIN, INPUT);
+  pinMode(ENCODER_ESQ_PIN, INPUT);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_DIR_PIN), isrEncoderDir, RISING);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_ESQ_PIN), isrEncoderEsq, RISING);
+  Serial.println("Encoders configurados.");
+  
   MPU6050Handler::setupMPU6050s();
+  
   if (!SPIFFS.begin(true)) {
     Serial.println("Can't initialize SPIFFS, please restart and try again.");
     return;
   }
+  
   File configFile = SPIFFS.open("/config.json", "r");
   if (!configFile) {
     Serial.println("Can't read config.json, please restart and try again.");
     return;
   }
+  
   DeserializationError error = deserializeJson(document, configFile);
   configFile.close();
   if (error) {
     Serial.println(error.f_str());
     return;
   }
+  
   const char* SSID = document["ssid"] | "ORIBot002";
   const char* PASSWORD = document["password"] | "l9110ura";
   WiFi.softAP(SSID, PASSWORD);
   Serial.println("WiFi AP started!");
   Serial.println(WiFi.softAPIP());
+  
   WebHandlers::setupAll();
   server.begin();
   ftpSrv.begin(SSID, PASSWORD);
 }
 
 void loop() {
-  delay(1); // PEQUENO DELAY PARA EVITAR O RESET DO WATCHDOG TIMER
+  delay(1); 
   ftpSrv.handleFTP();
 
-  // --- LEITURA DO SENSOR ULTRASSÔNICO SEM IMPRESSÃO ---
-  if (millis() - last_ultrasonic_read_time > 250) { 
+  if (millis() - last_ultrasonic_read_time > 250) {
       last_ultrasonic_read_time = millis();
       readUltrasonicDistance();
   }
 
-  // --- PROCESSAR DADOS DO MPU 1 (0x68) ---
   if (micros() - lastSampleTime1 >= (1000000 / SAMPLING_FREQ)) {
     lastSampleTime1 = micros();
     sensors_event_t a1, g1, temp1;
@@ -367,12 +351,8 @@ void loop() {
     rotationZ_1 = g1.gyro.z;
     float raw_pitch_1 = atan2(-accelerationX_1, sqrt(accelerationY_1 * accelerationY_1 + accelerationZ_1 * accelerationZ_1)) * 180.0 / PI;
     float raw_roll_1  = atan2(accelerationY_1, accelerationZ_1) * 180.0 / PI;
-
-    // --- AJUSTES MANUAIS PARA PITCH, ROLL E YAW DO MPU 1 (0x68) ---
     orientationX_1 = (raw_pitch_1 * PITCH_MULTIPLIER_1) + PITCH_OFFSET_1;
     orientationY_1 = (raw_roll_1 * ROLL_MULTIPLIER_1) + ROLL_OFFSET_1;
-    // --- FIM DOS AJUSTES ---
-
     static Adafruit_HMC5883_Unified mag1 = Adafruit_HMC5883_Unified(12345);
     static bool magInitialized1 = false;
     static float fusedYaw1 = 0.0f;
@@ -406,12 +386,8 @@ void loop() {
     orientationZ_1 = (fusedYaw1 * YAW_MULTIPLIER_1) + YAW_OFFSET_1;
     while (orientationZ_1 < 0.0f) orientationZ_1 += 360.0f;
     while (orientationZ_1 >= 360.0f) orientationZ_1 -= 360.0f;
-    currentVibrationMagnitude1 = sqrt(
-      pow(a1.acceleration.x, 2) +
-      pow(a1.acceleration.y, 2) +
-      pow(a1.acceleration.z, 2)
-    );
-    vReal1[sampleCounter1] = a1.acceleration.z; // USANDO O EIXO Z PARA VIBRAÇÃO
+    currentVibrationMagnitude1 = sqrt(pow(a1.acceleration.x, 2) + pow(a1.acceleration.y, 2) + pow(a1.acceleration.z, 2));
+    vReal1[sampleCounter1] = a1.acceleration.z;
     vImag1[sampleCounter1] = 0.0;
     sampleCounter1++;
     if (sampleCounter1 >= SAMPLES) {
@@ -424,7 +400,6 @@ void loop() {
     }
   }
 
-  // --- PROCESSAR DADOS DO MPU 2 (0x69) ---
   if (micros() - lastSampleTime2 >= (1000000 / SAMPLING_FREQ)) {
     lastSampleTime2 = micros();
     sensors_event_t a2, g2, temp2;
@@ -435,22 +410,14 @@ void loop() {
     rotationX_2 = g2.gyro.x;
     rotationY_2 = g2.gyro.y;
     rotationZ_2 = g2.gyro.z;
-
-    // --- AJUSTES MANUAIS PARA PITCH, ROLL E YAW DO MPU 2 (0x69) ---
     float raw_pitch_2 = atan2(-accelerationX_2, sqrt(accelerationY_2 * accelerationY_2 + accelerationZ_2 * accelerationZ_2)) * 180.0 / PI;
     float raw_roll_2  = atan2(accelerationY_2, accelerationZ_2) * 180.0 / PI;
     orientationX_2 = (raw_pitch_2 * PITCH_MULTIPLIER_2) + PITCH_OFFSET_2;
     orientationY_2 = (raw_roll_2 * ROLL_MULTIPLIER_2) + ROLL_OFFSET_2;
-    float raw_yaw_2 = rotationZ_2 * (180.0f / PI); 
+    float raw_yaw_2 = rotationZ_2 * (180.0f / PI);
     orientationZ_2 = (raw_yaw_2 * YAW_MULTIPLIER_2) + YAW_OFFSET_2;
-    // --- FIM DOS AJUSTES ---
-
-    currentVibrationMagnitude2 = sqrt(
-      pow(a2.acceleration.x, 2) +
-      pow(a2.acceleration.y, 2) +
-      pow(a2.acceleration.z, 2)
-    );
-    vReal2[sampleCounter2] = a2.acceleration.z; // USANDO O EIXO Z PARA VIBRAÇÃO
+    currentVibrationMagnitude2 = sqrt(pow(a2.acceleration.x, 2) + pow(a2.acceleration.y, 2) + pow(a2.acceleration.z, 2));
+    vReal2[sampleCounter2] = a2.acceleration.z;
     vImag2[sampleCounter2] = 0.0;
     sampleCounter2++;
     if (sampleCounter2 >= SAMPLES) {
@@ -459,10 +426,21 @@ void loop() {
       Serial.print("Roll: "); Serial.print(orientationY_2, 2); Serial.print(" graus, ");
       Serial.print("Taxa do Yaw: "); Serial.print(orientationZ_2, 2); Serial.println(" m/s^2");
       FFTHandler::processFFT(vReal2, vImag2, currentVibrationMagnitude2, dominantVibrationFrequency2, dominantVibrationAmplitude2);
-
-      // --- IMPRESSÃO DO SENSOR ULTRASSÔNICO ---
-      Serial.print("Distância: ");
+      
+      // --- IMPRESSÃO DOS DADOS DE DISTÂNCIA ---
+      noInterrupts();
+      long currentDirCount = encoderDirCount;
+      long currentEsqCount = encoderEsqCount;
+      interrupts();
+      float distanciaDir_cm = currentDirCount * DISTANCIA_POR_PULSO_CM;
+      float distanciaEsq_cm = currentEsqCount * DISTANCIA_POR_PULSO_CM;
+      Serial.print("Distância (Sonar): ");
       Serial.print(distance_cm, 2);
+      Serial.println(" cm");
+      Serial.print("Distância Direita (Encoder): ");
+      Serial.print(distanciaDir_cm, 2);
+      Serial.print(" cm | Distância Esquerda (Encoder): ");
+      Serial.print(distanciaEsq_cm, 2);
       Serial.println(" cm");
       Serial.println("--------------------------------------------------");
       sampleCounter2 = 0;
