@@ -1,0 +1,8 @@
+bblanchon/ArduinoJson@^6.20.1
+adafruit/Adafruit MPU6050@^2.2.6
+adafruit/Adafruit HMC5883 Unified@^1.2.3
+teckel12/NewPing@^1.9.7
+mbed-wisnup/HMC5883L@0.0.0+sha.b02e2917fb8f
+kosme/arduinoFFT@^2.0.4
+ottowinter/ESPAsyncWebServer-esphome@^3.0.0
+xreef/SimpleFTPServer@^2.1.6
