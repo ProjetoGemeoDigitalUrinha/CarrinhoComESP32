@@ -1,5 +1,5 @@
-.pio/build/esp32dev/src/vibrationsensor.cpp.o: src/vibrationsensor.cpp \
- include/vibrationsensor.h \
+.pio/build/esp32dev/src/Encoders.cpp.o: src/Encoders.cpp \
+ include/Encoders.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp_arduino_version.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/include/freertos/FreeRTOS.h \
@@ -133,4 +133,16 @@
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash_counters.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/io_pin_remap.h \
- /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
+ include/main_globals.h \
+ .pio/libdeps/esp32dev/Adafruit\ MPU6050/Adafruit_MPU6050.h \
+ .pio/libdeps/esp32dev/Adafruit\ BusIO/Adafruit_BusIO_Register.h \
+ .pio/libdeps/esp32dev/Adafruit\ BusIO/Adafruit_GenericDevice.h \
+ .pio/libdeps/esp32dev/Adafruit\ BusIO/Adafruit_I2CDevice.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
+ .pio/libdeps/esp32dev/Adafruit\ BusIO/Adafruit_SPIDevice.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-spi.h \
+ .pio/libdeps/esp32dev/Adafruit\ Unified\ Sensor/Adafruit_Sensor.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/Print.h
