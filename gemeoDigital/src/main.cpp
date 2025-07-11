@@ -13,12 +13,16 @@
 #include "FFTHandler.h"
 #include "WebHandlers.h"
 #include "Config.h"
+#include "Debug.h"
 
 // --- OBJETOS GLOBAIS ---
 L9110H robot;
 AsyncWebServer server(80);
 FtpServer ftpSrv;
 StaticJsonDocument<200> document;
+
+unsigned long lastPrintTime = 0;
+const unsigned long PRINT_INTERVAL_MS = 1000;
 
 void setup() {
     Serial.begin(115200);
@@ -63,4 +67,10 @@ void loop() {
     // Processamento dos MPUs e FFT
     processMPU1();
     processMPU2();
+
+    // Chama o módulo de debug para prints sincronizados
+    if (millis() - lastPrintTime >= PRINT_INTERVAL_MS) {
+        lastPrintTime = millis();
+        printDebug();
+    }
 }

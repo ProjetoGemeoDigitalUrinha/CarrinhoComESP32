@@ -225,4 +225,4 @@
  .pio/libdeps/esp32dev/Adafruit\ Unified\ Sensor/Adafruit_Sensor.h \
  include/L9110H.h include/Encoders.h include/Ultrasonic.h \
  include/MPU6050Handler.h include/MPUProcessing.h include/FFTHandler.h \
- include/WebHandlers.h include/Config.h
+ include/WebHandlers.h include/Config.h include/Debug.h

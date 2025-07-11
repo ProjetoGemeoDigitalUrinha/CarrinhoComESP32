@@ -24,11 +24,4 @@ void readUltrasonicDistance() {
     if (distance_cm > 400 || distance_cm <= 0) {
         distance_cm = 0;
     }
-    // Print distância ultrassônica a cada DISTANCE_PRINT_INTERVAL_MS
-    if (millis() - lastDistancePrintTime >= DISTANCE_PRINT_INTERVAL_MS) {
-        lastDistancePrintTime = millis();
-        Serial.print("Distância Ultrassônica: ");
-        Serial.print(distance_cm, 2);
-        Serial.println(" cm");
-    }
 }

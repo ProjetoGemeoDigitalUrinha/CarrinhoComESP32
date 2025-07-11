@@ -56,24 +56,7 @@ void processMPU1() {
 
         sampleCounter1++;
         if (sampleCounter1 >= SAMPLES) {
-            // Print orientações do MPU1
-            Serial.print("MPU 1: Pitch: ");
-            Serial.print(orientationX_1, 2);
-            Serial.print(" | Roll: ");
-            Serial.print(orientationY_1, 2);
-            Serial.print(" | Yaw: ");
-            Serial.println(orientationZ_1, 2);
-
             FFTHandler::processFFT(vReal1, vImag1, currentVibrationMagnitude1, dominantVibrationFrequency1, dominantVibrationAmplitude1);
-
-            // Print vibração MPU1
-            Serial.print("MPU 1: Vibração: ");
-            Serial.print(currentVibrationMagnitude1, 2);
-            Serial.print(" | Freq. dominante: ");
-            Serial.print(dominantVibrationFrequency1, 2);
-            Serial.print(" Hz | Amplitude dominante: ");
-            Serial.println(dominantVibrationAmplitude1, 2);
-
             sampleCounter1 = 0;
         }
     }
@@ -103,24 +86,7 @@ void processMPU2() {
 
         sampleCounter2++;
         if (sampleCounter2 >= SAMPLES) {
-            // Print orientações do MPU2
-            Serial.print("MPU 2: Pitch: ");
-            Serial.print(orientationX_2, 2);
-            Serial.print(" | Roll: ");
-            Serial.print(orientationY_2, 2);
-            Serial.print(" | Yaw: ");
-            Serial.println(orientationZ_2, 2);
-
             FFTHandler::processFFT(vReal2, vImag2, currentVibrationMagnitude2, dominantVibrationFrequency2, dominantVibrationAmplitude2);
-
-            // Print vibração MPU2
-            Serial.print("MPU 2: Vibração: ");
-            Serial.print(currentVibrationMagnitude2, 2);
-            Serial.print(" | Freq. dominante: ");
-            Serial.print(dominantVibrationFrequency2, 2);
-            Serial.print(" Hz | Amplitude dominante: ");
-            Serial.println(dominantVibrationAmplitude2, 2);
-
             sampleCounter2 = 0;
         }
     }

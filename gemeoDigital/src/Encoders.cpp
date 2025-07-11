@@ -1,8 +1,8 @@
 #include "Encoders.h"
 #include "main_globals.h"
 
-#define ENCODER_DIR_PIN 34
-#define ENCODER_ESQ_PIN 26
+#define ENCODER_DIR_PIN 26
+#define ENCODER_ESQ_PIN 34
 const int PPR_ENCODER = 20;
 
 static volatile long lastEncoderDirCount = 0;
@@ -33,15 +33,6 @@ void calcularRPMRodas() {
 
         lastEncoderDirCount = currentDirCount;
         lastEncoderEsqCount = currentEsqCount;
-
-        // Print RPM das rodas a cada RPM_PRINT_INTERVAL_MS
-        if (millis() - lastRpmPrintTime >= RPM_PRINT_INTERVAL_MS) {
-            lastRpmPrintTime = millis();
-            Serial.print("RPM Direita: ");
-            Serial.print(rpmDir, 2);
-            Serial.print(" | RPM Esquerda: ");
-            Serial.println(rpmEsq, 2);
-        }
     }
 }
 

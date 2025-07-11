@@ -20,8 +20,8 @@ const float YAW_MULTIPLIER_2   = -1.0;
 const float PITCH_OFFSET_2 = 1.0;
 const float ROLL_OFFSET_2  = -0.8;
 const float YAW_OFFSET_2   = 0.0;
-const uint16_t SAMPLES = 256;
-const double SAMPLING_FREQ = 1000.0;
+const uint16_t SAMPLES = 64;
+const double SAMPLING_FREQ = 100.0;
 
 // --- MPU 1 ---
 double vReal1[SAMPLES];
