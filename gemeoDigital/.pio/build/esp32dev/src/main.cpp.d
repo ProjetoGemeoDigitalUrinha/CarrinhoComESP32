@@ -223,6 +223,7 @@
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-spi.h \
  .pio/libdeps/esp32dev/Adafruit\ Unified\ Sensor/Adafruit_Sensor.h \
- include/L9110H.h include/Encoders.h include/Ultrasonic.h \
- include/MPU6050Handler.h include/MPUProcessing.h include/FFTHandler.h \
- include/WebHandlers.h include/Config.h include/Debug.h
+ include/L9110H.h include/L9110H.h include/Encoders.h \
+ include/Ultrasonic.h include/MPU6050Handler.h include/MPUProcessing.h \
+ include/FFTHandler.h include/WebHandlers.h include/Config.h \
+ include/Debug.h

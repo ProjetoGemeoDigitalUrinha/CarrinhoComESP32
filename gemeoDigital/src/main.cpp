@@ -21,8 +21,8 @@ AsyncWebServer server(80);
 FtpServer ftpSrv;
 StaticJsonDocument<200> document;
 
-unsigned long lastPrintTime = 0;
-const unsigned long PRINT_INTERVAL_MS = 1000;
+unsigned long debugLastPrintTime = 0;
+const unsigned long DEBUG_PRINT_INTERVAL_MS = 1000;
 
 void setup() {
     Serial.begin(115200);
@@ -69,8 +69,8 @@ void loop() {
     processMPU2();
 
     // Chama o módulo de debug para prints sincronizados
-    if (millis() - lastPrintTime >= PRINT_INTERVAL_MS) {
-        lastPrintTime = millis();
+    if (millis() - debugLastPrintTime >= DEBUG_PRINT_INTERVAL_MS) {
+        debugLastPrintTime = millis();
         printDebug();
     }
 }

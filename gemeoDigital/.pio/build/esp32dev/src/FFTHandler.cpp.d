@@ -145,5 +145,5 @@
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-spi.h \
  .pio/libdeps/esp32dev/Adafruit\ Unified\ Sensor/Adafruit_Sensor.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/Print.h \
- .pio/libdeps/esp32dev/arduinoFFT/src/arduinoFFT.h \
+ include/L9110H.h .pio/libdeps/esp32dev/arduinoFFT/src/arduinoFFT.h \
  .pio/libdeps/esp32dev/arduinoFFT/src/enumsFFT.h

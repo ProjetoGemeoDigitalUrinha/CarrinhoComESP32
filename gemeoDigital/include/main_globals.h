@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <Adafruit_MPU6050.h>
+#include "L9110H.h"
 
 // --- ENCODERS ---
 extern volatile long encoderDirCount;
@@ -46,5 +47,15 @@ extern const double SAMPLING_FREQ;
 // --- OBJETOS GLOBAIS ---
 extern Adafruit_MPU6050 mpu1;
 extern Adafruit_MPU6050 mpu2;
+extern L9110H robot;
+
+// --- MQTT ---
+extern const char* mqtt_server;
+extern const int mqtt_port;
+extern const char* mqtt_user;
+extern const char* mqtt_password;
+extern const char* topic_status;
+extern const char* topic_sensors;
+extern const char* topic_command;
 
 #endif

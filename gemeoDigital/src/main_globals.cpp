@@ -54,3 +54,12 @@ unsigned long last_ultrasonic_read_time = 0;
 // --- OBJETOS GLOBAIS ---
 Adafruit_MPU6050 mpu1;
 Adafruit_MPU6050 mpu2;
+
+// --- MQTT ---
+const char* mqtt_server = "broker.hivemq.com";
+const int mqtt_port = 1883;
+const char* mqtt_user = "your_mqtt_user";
+const char* mqtt_password = "your_mqtt_password";
+const char* topic_status = "oribot/status";
+const char* topic_sensors = "oribot/sensors";
+const char* topic_command = "oribot/command";
