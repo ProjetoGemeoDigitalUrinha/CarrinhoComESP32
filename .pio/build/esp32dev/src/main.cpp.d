@@ -133,9 +133,8 @@
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/io_pin_remap.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
- .pio/libdeps/esp32dev/SimpleFTPServer/SimpleFTPServer.h \
- .pio/libdeps/esp32dev/SimpleFTPServer/FtpServer.h \
- .pio/libdeps/esp32dev/SimpleFTPServer/FtpServerKey.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/SPIFFS/src/SPIFFS.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/FS/src/FS.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFi.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/Print.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/IPv6Address.h \
@@ -196,13 +195,14 @@
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFiUdp.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/Udp.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/cbuf.h \
- /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/FS/src/FS.h \
- /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/FFat/src/FFat.h \
- /home/lar-1480/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/wear_levelling/include/wear_levelling.h \
  .pio/libdeps/esp32dev/ArduinoJson/src/ArduinoJson.h \
  .pio/libdeps/esp32dev/ArduinoJson/src/ArduinoJson.hpp \
  .pio/libdeps/esp32dev/ArduinoJson/src/ArduinoJson/Configuration.hpp \
- include/L9110H.h \
+ .pio/libdeps/esp32dev/SimpleFTPServer/SimpleFTPServer.h \
+ .pio/libdeps/esp32dev/SimpleFTPServer/FtpServer.h \
+ .pio/libdeps/esp32dev/SimpleFTPServer/FtpServerKey.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/FFat/src/FFat.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/wear_levelling/include/wear_levelling.h \
  .pio/libdeps/esp32dev/ESPAsyncWebServer-esphome/src/ESPAsyncWebServer.h \
  .pio/libdeps/esp32dev/ESPAsyncWebServer-esphome/src/StringArray.h \
  .pio/libdeps/esp32dev/AsyncTCP-esphome/src/AsyncTCP.h \
@@ -212,17 +212,19 @@
  .pio/libdeps/esp32dev/ESPAsyncWebServer-esphome/src/AsyncWebSocket.h \
  .pio/libdeps/esp32dev/ESPAsyncWebServer-esphome/src/AsyncWebSynchronization.h \
  .pio/libdeps/esp32dev/ESPAsyncWebServer-esphome/src/AsyncEventSource.h \
- /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/SPIFFS/src/SPIFFS.h \
- /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
- /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
+ include/main_globals.h \
  .pio/libdeps/esp32dev/Adafruit\ MPU6050/Adafruit_MPU6050.h \
  .pio/libdeps/esp32dev/Adafruit\ BusIO/Adafruit_BusIO_Register.h \
  .pio/libdeps/esp32dev/Adafruit\ BusIO/Adafruit_GenericDevice.h \
  .pio/libdeps/esp32dev/Adafruit\ BusIO/Adafruit_I2CDevice.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
  .pio/libdeps/esp32dev/Adafruit\ BusIO/Adafruit_SPIDevice.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h \
  /home/lar-1480/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-spi.h \
  .pio/libdeps/esp32dev/Adafruit\ Unified\ Sensor/Adafruit_Sensor.h \
- .pio/libdeps/esp32dev/Adafruit\ HMC5883\ Unified/Adafruit_HMC5883_U.h \
- .pio/libdeps/esp32dev/arduinoFFT/src/arduinoFFT.h \
- .pio/libdeps/esp32dev/arduinoFFT/src/enumsFFT.h
+ include/L9110H.h include/L9110H.h include/Encoders.h \
+ include/Ultrasonic.h include/MPU6050Handler.h include/MPUProcessing.h \
+ include/FFTHandler.h include/WebHandlers.h include/MQTTHandler.h \
+ include/Config.h include/Debug.h \
+ .pio/libdeps/esp32dev/QMC5883LCompass/src/QMC5883LCompass.h
