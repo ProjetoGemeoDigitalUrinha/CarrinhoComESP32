@@ -58,6 +58,7 @@ void loop() {
 #include "MQTTHandler.h"
 #include "Config.h"
 #include "Debug.h"
+#include "Network.h"
 
 // ===================================================================================
 // --- O HMC NA VERDADE É FALSIFICADO. ELE É O QMC. PASSARAM A PERNA ---
@@ -105,7 +106,23 @@ void setup() {
         return;
     }
     loadConfig(document);
-
+    // Network setup
+    Network::connectWiFi(ssid, password);
+    while (!Network::isWiFiConnected()) {
+        Serial.print(".");
+        delay(50);
+    }
+    Serial.println();
+    Serial.println("WiFi connected!");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+    if (!Network::beginMDNS(mdns_hostname)) {
+        Serial.println("Error setting up MDNS responder!");
+    } else {
+        Network::addMDNSService(mdns_service, mdns_proto, mdns_port);
+        Serial.println("mDNS responder started");
+    }
+    // ===================================================================================
     // Configuração da rede WiFi como ponto de acesso
     // const char* SSID = document["ssid"] | "ORIBot002";
     // const char* PASSWORD = document["password"] | "l9110ura";
@@ -125,7 +142,7 @@ void setup() {
     WebHandlers::setupAll();
     server.begin();
     // ftpSrv.begin(SSID, PASSWORD);
-    ftpSrv.begin("Hel's_doces", "helsdoces123");
+    ftpSrv.begin("Hel's_doces" , "helsdoces123");
     MQTTHandler::setupMQTT(MQTTHandler::mqttCallback);
 }
 

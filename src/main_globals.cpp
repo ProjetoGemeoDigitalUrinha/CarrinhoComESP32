@@ -63,3 +63,13 @@ const char* mqtt_password = "lar_mqtt";
 const char* topic_status = "oribot/status";
 const char* topic_sensors = "R/IOT/CTRL";
 const char* topic_command = "oribot/command";
+
+// --- Network ---
+const char* ssid = "Hel's_doces";
+const char* password = "helsdoces123";
+const char* mdns_hostname = "twinesp32";
+const uint16_t mdns_port = 80;
+const char* mdns_service = "_http";
+const char* mdns_proto = "tcp";
+const char* softap_ssid = "ORIBot002";
+const char* softap_password = "l9110ura";
