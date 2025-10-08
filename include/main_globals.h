@@ -58,4 +58,13 @@ extern const char* topic_status;
 extern const char* topic_sensors;
 extern const char* topic_command;
 
+// --- Network ---
+extern const char* ssid;
+extern const char* password;
+extern const char* mdns_hostname;
+extern const uint16_t mdns_port;
+extern const char* mdns_service;
+extern const char* mdns_proto;
+extern const char* softap_ssid;
+extern const char* softap_password;
 #endif

@@ -226,5 +226,7 @@
  include/L9110H.h include/L9110H.h include/Encoders.h \
  include/Ultrasonic.h include/MPU6050Handler.h include/MPUProcessing.h \
  include/FFTHandler.h include/WebHandlers.h include/MQTTHandler.h \
- include/Config.h include/Debug.h \
+ include/Config.h include/Debug.h include/Network.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/libraries/ESPmDNS/src/ESPmDNS.h \
+ /home/lar-1480/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/mdns/include/mdns.h \
  .pio/libdeps/esp32dev/QMC5883LCompass/src/QMC5883LCompass.h
