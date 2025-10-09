@@ -116,12 +116,12 @@ void setup() {
     Serial.println("WiFi connected!");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
-    if (!Network::beginMDNS(mdns_hostname)) {
+    while (!Network::beginMDNS(mdns_hostname)) {
         Serial.println("Error setting up MDNS responder!");
-    } else {
-        Network::addMDNSService(mdns_service, mdns_proto, mdns_port);
-        Serial.println("mDNS responder started");
     }
+    Network::addMDNSService(mdns_service, mdns_proto, mdns_port);
+    Serial.println("mDNS responder started");
+    delay(10000);
     // ===================================================================================
     // Configuração da rede WiFi como ponto de acesso
     // const char* SSID = document["ssid"] | "ORIBot002";
@@ -130,19 +130,11 @@ void setup() {
     // Serial.println("WiFi AP started!");
     // Serial.println(WiFi.softAPIP());
     // Configuração da rede WiFi para conexão externa
-    WiFi.begin("Hel's_doces","helsdoces123");
-    Serial.print("Conectando ao WiFi Hel's_doces[");
-    while(!WiFi.isConnected()) {
-        Serial.print(".");
-        delay(50);
-    }
-    Serial.println("]");
-    Serial.println("IP Local: " + WiFi.localIP().toString());
     // Inicialização dos endpoints HTTP e FTP
     WebHandlers::setupAll();
     server.begin();
     // ftpSrv.begin(SSID, PASSWORD);
-    ftpSrv.begin("Hel's_doces" , "helsdoces123");
+    ftpSrv.begin(ssid , password);
     MQTTHandler::setupMQTT(MQTTHandler::mqttCallback);
 }
 
@@ -166,6 +158,11 @@ void loop() {
     }
     if (millis() % 10UL == 0UL) {
         MQTTHandler::publishSensorData();
+    }
+    static unsigned long timeDebug = 0;
+    if ((millis() - timeDebug) > 500UL) {
+        timeDebug = millis();
+        printDebug();
     }
     //  ===================================================================================
 }

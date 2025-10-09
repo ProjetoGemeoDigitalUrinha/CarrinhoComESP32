@@ -65,10 +65,10 @@ const char* topic_sensors = "R/IOT/CTRL";
 const char* topic_command = "oribot/command";
 
 // --- Network ---
-const char* ssid = "Hel's_doces";
-const char* password = "helsdoces123";
+const char* ssid = "LAR";
+const char* password = "LAR@1480";
 const char* mdns_hostname = "twinesp32";
-const uint16_t mdns_port = 80;
+const uint16_t mdns_port = 1080;
 const char* mdns_service = "_http";
 const char* mdns_proto = "tcp";
 const char* softap_ssid = "ORIBot002";
