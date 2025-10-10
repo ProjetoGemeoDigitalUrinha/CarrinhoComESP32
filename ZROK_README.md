@@ -4,7 +4,7 @@ Este documento descreve o script `zrok-digitaltwin.sh` presente na raiz do proje
 
 ---
 
-## ✅ O que o script faz
+## O que o script faz
 
 O script `zrok-digitaltwin.sh` tem como objetivo expor um dispositivo da rede local identificado pelo hostname mDNS `twinesp32.local` para acesso remoto pela internet usando o serviço [**zrok**](https://zrok.io).
 
@@ -48,7 +48,7 @@ Se o IP não for resolvido, o script exibe uma mensagem de erro e finaliza com `
 
 ---
 
-## 🧰 Pré-requisitos
+## Pré-requisitos
 
 * **Sistema operacional:** Linux.
 * **Cliente `zrok` instalado** e habilitado com sua conta.
@@ -58,10 +58,10 @@ Se o IP não for resolvido, o script exibe uma mensagem de erro e finaliza com `
 
 ---
 
-## 🔧 Instalação do `zrok` (Linux)
+## Instalação do `zrok` (Linux)
 
 1. Acesse o site oficial do zrok:
-   👉 [https://zrok.dev](https://zrok.dev)
+   [https://zrok.dev](https://zrok.dev)
 
 2. Instale o cliente usando o script automatizado:
 
@@ -79,16 +79,16 @@ Se o IP não for resolvido, o script exibe uma mensagem de erro e finaliza com `
 
 ---
 
-## 🔐 Como obter sua chave (`enable key`) no zrok
+## Como obter sua chave (`enable key`) no zrok
 
 O cliente `zrok` requer ativação com uma chave associada à sua conta. Para obtê-la:
 
 1. Acesse:
-   👉 **[https://api-v1.zrok.io/](https://api-v1.zrok.io/)**
+   **[https://api-v1.zrok.io/](https://api-v1.zrok.io/)**
 
 2. Faça login com sua conta (GitHub, Google etc.).
 
-3. Clique no ícone de **❓ “Getting Started”** no canto superior direito da interface.
+3. Clique no ícone de **? “Getting Started”** no canto superior direito da interface.
 
 4. Será exibido um comando semelhante a:
 
@@ -106,7 +106,7 @@ O cliente `zrok` requer ativação com uma chave associada à sua conta. Para ob
 
 ---
 
-## 🚀 Como usar o script `zrok-digitaltwin.sh`
+## Como usar o script `zrok-digitaltwin.sh`
 
 1. Torne o script executável:
 
@@ -123,23 +123,23 @@ O cliente `zrok` requer ativação com uma chave associada à sua conta. Para ob
 3. Saída esperada em caso de sucesso:
 
    ```
-   🔍 Resolving IP for twinesp32.local...
-   ✅ Resolved twinesp32.local to 192.168.1.42
-   🚀 Launching zrok reserved share: digitaltwinmaria
+   Resolving IP for twinesp32.local...
+   Resolved twinesp32.local to 192.168.1.42
+   Launching zrok reserved share: digitaltwinmaria
    [zrok output...]
    ```
 
 4. Caso a resolução falhe:
 
    ```
-   ❌ Failed to resolve IP for twinesp32.local
+   Failed to resolve IP for twinesp32.local
    ```
 
 5. Se tudo estiver correto, o terminal exibirá uma URL pública (ou via a interface web do zrok) que pode ser usada para acessar o dispositivo remotamente.
 
 ---
 
-## ⚙️ Personalização do script
+## Personalização do script
 
 Você pode personalizar o comportamento do script editando as variáveis no início do arquivo:
 
@@ -171,7 +171,7 @@ Também é possível adaptar o script para aceitar argumentos via linha de coman
 
 ---
 
-## 🧪 Dependências adicionais
+## Dependências adicionais
 
 * O script utiliza `getent` e, como fallback, `avahi-resolve` para resolver nomes mDNS.
 * Certifique-se de que o pacote `avahi-utils` está instalado (caso necessário):
@@ -195,7 +195,7 @@ ping <hostname>.local
 
 ---
 
-## 🔐 Boas práticas de segurança
+## Boas práticas de segurança
 
 * **Evite hardcode** de valores sensíveis; use variáveis de ambiente ou arquivos `.env`.
 * Proteja o acesso ao compartilhamento via configurações do zrok (ACLs, autenticação etc.).
