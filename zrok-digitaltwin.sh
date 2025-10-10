@@ -26,4 +26,5 @@ echo "✅ Resolved $HOSTNAME to $IP"
 
 # Start zrok reserved share using the resolved IP
 echo "🚀 Launching zrok reserved share: $RESERVED_SHARE_NAME"
-zrok share reserved "$RESERVED_SHARE_NAME" --backend-url "http://$IP"
+zrok reserve public -n "$RESERVED_SHARE_NAME" $IP
+zrok share reserved "$RESERVED_SHARE_NAME"
