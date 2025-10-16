@@ -10,7 +10,7 @@ int y_min = 32767, y_max = -32768;
 int z_min = 32767, z_max = -32768;
 
 void setup() {
-  Serial.begin(1152200);
+  Serial.begin(115200);
   Wire.begin();
   compass.init();
   Serial.println("==============================================");
@@ -37,8 +37,7 @@ void loop() {
   Serial.println();
   
   delay(100);
-}
-*/
+} */
 // FIM DO CÓDIGO UTILIZADO PARA CALIBRAR A BÚSSOLA
 
 #include <Arduino.h>
@@ -59,12 +58,7 @@ void loop() {
 #include "Config.h"
 #include "Debug.h"
 #include "Network.h"
-
-// ===================================================================================
-// --- O HMC NA VERDADE É FALSIFICADO. ELE É O QMC. PASSARAM A PERNA ---
 #include <Wire.h>
-#include "QMC5883LCompass.h"
-// ===================================================================================
 
 
 // --- OBJETOS GLOBAIS ---
@@ -73,29 +67,11 @@ AsyncWebServer server(80);
 FtpServer ftpSrv;
 StaticJsonDocument<200> document;
 
-// ===================================================================================
-QMC5883LCompass compass;
-float yaw = 0.0;
-float yaw_offset = 0.0;
-unsigned long lastYawReadTime = 0;
-// ===================================================================================
-
 unsigned long debugLastPrintTime = 0;
 const unsigned long DEBUG_PRINT_INTERVAL_MS = 1000;
 
 void setup() {
     Serial.begin(115200);
-    // ===================================================================================
-    Serial.println("Iniciando o sensor de Yaw (QMC5883L)...");
-    Wire.begin();
-    compass.init();
-    // --- VALORES DE CALIBRAÇÃO OBTIDOS PELO CÓDIGO COMENTADO NO INÍCIO. VOCÊ RODA ELE E
-    //GIRA O SENSOR DE TODAS AS FORMAS POSSÍVELS POR ALGUNS MINUTOS ATÉ OS VALORES ESTABILIZAREM ---
-    compass.setCalibration(-792, 997, 1287, 3073, -1963, -546);
-    delay(500);
-    compass.read();
-    yaw_offset = compass.getAzimuth();
-    Serial.println("Sensor de Yaw calibrado e pronto.");
     // ===================================================================================
     MPU6050Handler::setupMPU6050s();
     setupEncoders();
@@ -145,17 +121,6 @@ void loop() {
     processMPU1();
     processMPU2();
     // ===================================================================================
-    if (millis() - lastYawReadTime > 100) {
-        lastYawReadTime = millis();
-        compass.read();
-        float angulo_atual = compass.getAzimuth();
-        yaw = angulo_atual - yaw_offset;
-        if (yaw < 0) {
-            yaw += 360;
-        }
-        Serial.print("Yaw do QMC5883L: ");
-        Serial.println(yaw, 2);
-    }
     if (millis() % 10UL == 0UL) {
         MQTTHandler::publishSensorData();
     }

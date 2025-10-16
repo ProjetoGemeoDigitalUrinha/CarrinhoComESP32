@@ -1,8 +1,10 @@
 #include "MPUProcessing.h"
 #include "main_globals.h"
-#include <Adafruit_HMC5883_U.h>
+#include <QMC5883LCompass.h>
 #include <math.h>
 #include "FFTHandler.h"
+
+QMC5883LCompass compass; // É QMC5883L NA VERDADE. VERSÃO CHINESA FALSIFICADA DO HMC5883L. PASSARAM A PERNA
 
 void processMPU1() {
     if (micros() - lastSampleTime1 >= (1000000 / SAMPLING_FREQ)) {
@@ -19,41 +21,40 @@ void processMPU1() {
         float raw_roll_1  = atan2(accelerationY_1, accelerationZ_1) * 180.0 / PI;
         orientationX_1 = (raw_pitch_1 * PITCH_MULTIPLIER_1) + PITCH_OFFSET_1;
         orientationY_1 = (raw_roll_1 * ROLL_MULTIPLIER_1) + ROLL_OFFSET_1;
-        static Adafruit_HMC5883_Unified mag1 = Adafruit_HMC5883_Unified(12345);
-        static bool magInitialized1 = false;
+        static bool compassInitialized = false;
         static float fusedYaw1 = 0.0f;
         static unsigned long lastYawTime1 = 0;
-        if (!magInitialized1) {
-            if (mag1.begin()) {
-                magInitialized1 = true;
-            }
+        static bool yawOffsetCalibrated = false;
+        static float yawOffset = 0.0f;
+        if (!compassInitialized) {
+            Wire.begin();
+            compass.init();
+            compass.setCalibration(-156, 1388, 798, 2697, -212, 1201);
+            compassInitialized = true;
         }
         unsigned long now1 = micros();
         float dt1 = (lastYawTime1 == 0) ? 0.0f : (now1 - lastYawTime1) / 1e6f;
         lastYawTime1 = now1;
-        float magYaw1 = NAN;
-        if (magInitialized1) {
-            sensors_event_t mag_event1;
-            mag1.getEvent(&mag_event1);
-            magYaw1 = atan2(mag_event1.magnetic.y, mag_event1.magnetic.x);
-            if (magYaw1 < 0) magYaw1 += 2 * PI;
-            magYaw1 = magYaw1 * 180.0f / PI;
+        compass.read();
+        float magYaw1 = compass.getAzimuth();  // (0-360)
+        if (!yawOffsetCalibrated && !isnan(magYaw1)) {
+            yawOffset = magYaw1;
+            yawOffsetCalibrated = true;
         }
         if (dt1 > 0 && fabs(rotationZ_1) < 100.0f) {
             fusedYaw1 += rotationZ_1 * dt1 * 180.0f / PI;
         }
         if (!isnan(magYaw1)) {
-            const float alpha = 0.98f;
+            const float alpha = 0.9f;
             fusedYaw1 = alpha * fusedYaw1 + (1.0f - alpha) * magYaw1;
         }
-        orientationZ_1 = (fusedYaw1 * YAW_MULTIPLIER_1) + YAW_OFFSET_1;
-        while (orientationZ_1 < 0.0f) orientationZ_1 += 360.0f;
-        while (orientationZ_1 >= 360.0f) orientationZ_1 -= 360.0f;
-
+        float correctedYaw = fusedYaw1 - yawOffset;
+        while (correctedYaw < 0.0f) correctedYaw += 360.0f;
+        while (correctedYaw >= 360.0f) correctedYaw -= 360.0f;
+        orientationZ_1 = (correctedYaw * YAW_MULTIPLIER_1) + YAW_OFFSET_1;
         currentVibrationMagnitude1 = sqrt(pow(a1.acceleration.x, 2) + pow(a1.acceleration.y, 2) + pow(a1.acceleration.z, 2));
         vReal1[sampleCounter1] = currentVibrationMagnitude1;
         vImag1[sampleCounter1] = 0.0;
-
         sampleCounter1++;
         if (sampleCounter1 >= SAMPLES) {
             FFTHandler::processFFT(vReal1, vImag1, currentVibrationMagnitude1, dominantVibrationFrequency1, dominantVibrationAmplitude1);
@@ -61,6 +62,7 @@ void processMPU1() {
         }
     }
 }
+
 
 void processMPU2() {
     if (micros() - lastSampleTime2 >= (1000000 / SAMPLING_FREQ)) {
@@ -79,11 +81,9 @@ void processMPU2() {
         orientationY_2 = (raw_roll_2 * ROLL_MULTIPLIER_2) + ROLL_OFFSET_2;
         float raw_yaw_2 = rotationZ_2 * (180.0f / PI);
         orientationZ_2 = (raw_yaw_2 * YAW_MULTIPLIER_2) + YAW_OFFSET_2;
-
         currentVibrationMagnitude2 = sqrt(pow(a2.acceleration.x, 2) + pow(a2.acceleration.y, 2) + pow(a2.acceleration.z, 2));
         vReal2[sampleCounter2] = currentVibrationMagnitude2;
         vImag2[sampleCounter2] = 0.0;
-
         sampleCounter2++;
         if (sampleCounter2 >= SAMPLES) {
             FFTHandler::processFFT(vReal2, vImag2, currentVibrationMagnitude2, dominantVibrationFrequency2, dominantVibrationAmplitude2);

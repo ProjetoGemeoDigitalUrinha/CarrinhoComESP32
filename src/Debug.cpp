@@ -39,9 +39,9 @@ void printDebug() {
     Serial.print(orientationX_2, 2);
     Serial.print("° | Roll: ");
     Serial.print(orientationY_2, 2);
-    Serial.print("° | Yaw: ");
+    Serial.print("° | Taxa do Yaw: ");
     Serial.print(orientationZ_2, 2);
-    Serial.println("°");
+    Serial.println("°/s");
     Serial.print("Vibração: ");
     Serial.print(currentVibrationMagnitude2, 2);
     Serial.print(" m/s² | Freq. dominante: ");
