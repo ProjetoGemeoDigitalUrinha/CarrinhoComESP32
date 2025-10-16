@@ -29,7 +29,7 @@ void processMPU1() {
         if (!compassInitialized) {
             Wire.begin();
             compass.init();
-            compass.setCalibration(-156, 1388, 798, 2697, -212, 1201);
+            compass.setCalibration(-418, 1222, 1026, 2838, -76, 1337);
             compassInitialized = true;
         }
         unsigned long now1 = micros();
@@ -45,7 +45,7 @@ void processMPU1() {
             fusedYaw1 += rotationZ_1 * dt1 * 180.0f / PI;
         }
         if (!isnan(magYaw1)) {
-            const float alpha = 0.9f;
+            const float alpha = 0.98f;
             fusedYaw1 = alpha * fusedYaw1 + (1.0f - alpha) * magYaw1;
         }
         float correctedYaw = fusedYaw1 - yawOffset;
