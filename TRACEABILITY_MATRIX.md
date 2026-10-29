@@ -1,33 +1,79 @@
+# Matriz de rastreabilidade
 
-# Matriz de Rastreabilidade
+Esta matriz relaciona as funcionalidades observadas no firmware aos seus pontos de implementação e ao estado de integração. O código atual é a fonte de verdade: uma função existente, mas não chamada pelo fluxo principal, não é considerada operacional de ponta a ponta.
 
-| ID | Requisito / Descrição | Arquivo(s) | Função(s) / Símbolos | Observações |
-|---:|---|---|---|---|
-| R1 | Ler configuração JSON do SPIFFS | `src/Config.cpp` | `loadConfig(StaticJsonDocument<200>&)` | Abre `/config.json` via SPIFFS; registra erro em Serial se falha. Usa `ArduinoJson`. |
-| R2 | Inicializar e configurar WiFi (conexão e mDNS) | `src/Network.cpp`, `src/main.cpp` | `Network::connectWiFi`, `Network::beginMDNS`, chamadas em `setup()` | `Network::connectWiFi` implementa timeout; `main.cpp` chama `Network::connectWiFi` e `Network::beginMDNS`. `main.cpp` também usa `WiFi.begin` diretamente em alguns trechos. |
-| R3 | Fornecer API HTTP para arquivos estáticos e comandos do robô | `src/WebHandlers.cpp`, `data/` | `WebHandlers::setupAll`, várias rotas em `handleStaticFiles`, `handleRobotCommands` | Serve `index.html`, assets e endpoints `/frt`, `/trs`, `/esq`, `/drt`, `/stop`, `/action`. Arquivos estáticos estão em `data/`. Usa `ESPAsyncWebServer`. |
-| R4 | Controlar motores via driver L9110H | `src/L9110H.cpp`, `include/L9110H.h` | `L9110H::motor`, `L9110H::forward`, `backward`, `left`, `right`, `stop` | Classe `L9110H` encapsula lógica de direção e PWM (usa `analogWrite`). Valores de pinos definidos dinamicamente por `motor()` (pode ser melhorado). |
-| R5 | Ler encoders e calcular RPM | `src/Encoders.cpp`, `include/Encoders.h`, `src/main_globals.cpp` | ISRs `isrEncoderDir`, `isrEncoderEsq`, `calcularRPMRodas`, `setupEncoders` | Usa interrupções em pinos 26 e 34; PPR = 20; cálculo de RPM a cada 100 ms. Variáveis globais: `encoderDirCount`, `encoderEsqCount`, `rpmDir`, `rpmEsq`. |
-| R6 | Ler distância ultrassônica | `src/Ultrasonic.cpp`, `include/Ultrasonic.h` | `setupUltrasonic`, `readUltrasonicDistance` | Usa TRIG_PIN=5, ECHO_PIN=18; `pulseIn` com timeout; distância em `distance_cm`. |
-| R7 | Inicializar e ler sensores MPU6050 (dois) | `src/MPU6050Handler.cpp`, `src/MPUProcessing.cpp`, `include/MPU6050Handler.h` | `MPU6050Handler::setupMPU6050s`, `processMPU1`, `processMPU2` | Cria dois objetos `Adafruit_MPU6050 mpu1, mpu2` em `main_globals.cpp`. `setup` usa `mpu1.begin()` e `mpu2.begin(105)`. Processamento calcula orientação (pitch/roll/yaw) e popula arrays para FFT. |
-| R8 | Calcular FFT para análise de vibração | `src/FFTHandler.cpp`, `include/FFTHandler.h`, `src/MPUProcessing.cpp` | `FFTHandler::processFFT` | Usa `arduinoFFT` para janela, FFT e detecção de pico. Constantes `SAMPLES=64`, `SAMPLING_FREQ=100.0` definidas em `main_globals.cpp`. Produz `dominantFrequency` e `dominantAmplitude`. |
-| R9 | Publicar dados e status por MQTT | `src/MQTTHandler.cpp`, `include/MQTTHandler.h`, `src/main_globals.cpp` | `MQTTHandler::setupMQTT`, `handleMQTT`, `publishSensorData`, `publishStatus`, `mqttCallback` | Usa `PubSubClient` e `WiFiClient`. Variáveis MQTT em `main_globals.cpp` (`mqtt_server`, `mqtt_port`, `mqtt_user`, `mqtt_password`, tópicos). `mqttCallback` aceita comandos textuais (`frt`, `trs`, `esq`, `drt`, `stop`) e aciona `robot`. `handleMQTT` reconecta e publica status. |
-| R10 | Servidor FTP para arquivos | `src/main.cpp`, `data/` | `FtpServer ftpSrv; ftpSrv.begin(...)`, `ftpSrv.handleFTP()` | Usa `SimpleFTPServer`. Iniciado em `setup()` e processado em `loop()`. Credenciais hard-coded em `main.cpp`. |
-| R11 | Fornecer endpoints para leituras de sensores (HTTP JSON/text) | `src/WebHandlers.cpp`, `src/MPUProcessing.cpp`, `src/Ultrasonic.cpp`, `src/Encoders.cpp` | Rotas como `/mpu1/acceleration`, `/mpu1/vibration_magnitude`, `/distance`, `/rpm_dir` | Endpoints retornam `String` ou JSON serializado com `ArduinoJson`. |
-| R12 | Depuração via serial com resumo periódico | `src/Debug.cpp`, `src/main.cpp` | `printDebug()`, uso potencial em `loop()` | `printDebug()` imprime RPM, distância, orientação/vibração dos MPUs; `main.cpp` tem lógica de temporização para prints (variáveis `DEBUG_PRINT_INTERVAL_MS`). |
-| R13 | Leitura/calibração de bússola QMC5883L para yaw | `src/main.cpp` (trechos), `src/main_globals.cpp` | Uso de `QMC5883LCompass compass; compass.init(); compass.setCalibration(...); compass.getAzimuth()` | `main.cpp` contém inicialização e calibração com valores fixos e offset de yaw. |
-| R14 | Arquitetura: variáveis globais e objetos compartilhados | `src/main_globals.cpp`, diversos includes | Declara `mpu1`, `mpu2`, arrays de FFT, contadores, credenciais, etc. | Centraliza estado compartilhado para sensores, MQTT e rede. |
+O guia funcional e de operação está em [README.md](README.md).
 
-## Observações gerais e potenciais riscos / melhorias
-- Vários valores sensíveis (WiFi SSID/senha, MQTT credenciais, FTP credenciais) estão hard-coded em `main_globals.cpp` e `main.cpp` e também existe suporte para `config.json` em SPIFFS (`loadConfig`) — seria bom unificar e priorizar `config.json`.
-- `L9110H::L9110H()` usa `pinMode(pinA, OUTPUT)` e `pinA` é definido só dentro de `motor()`; inicialização de pinos no construtor pode referenciar pinos antes de serem configurados. Recomendo mover a definição de pinos para o construtor ou aceitar pinos no construtor.
-- `Config::loadConfig` não valida campos esperados do JSON; considere adicionar verificações e valores defaults.
-- `Network::connectWiFi` introduz timeout argument (implementado) enquanto chamadas em `main.cpp` usam `WiFi.begin` direto; unificar para usar `Network::connectWiFi` com timeout é mais consistente.
-- Interrupções dos encoders usam pinos 26 e 34; garantir que correspondem ao hardware (pinos de interrupção no ESP32).
-- `analogWrite` no ESP32 pode precisar de configuração de PWM (ledc) dependendo da plataforma; verificar compatibilidade da função usada.
+## Estados
 
-## Como usar / onde colocar o arquivo
-- Este arquivo está no projeto como `TRACEABILITY_MATRIX.md` (raiz). Mantê-lo atualizado quando alterar requisitos ou mover código.
+| Estado | Significado |
+|---|---|
+| **Implementado** | O caminho descrito está presente e conectado nos pontos relevantes do firmware. |
+| **Parcial** | Há implementação, mas o fluxo tem limitações ou não está completo. |
+| **Não integrado** | A lógica existe, mas não é chamada pelo fluxo ativo ou não produz o comportamento esperado. |
+| **Divergente** | As partes envolvidas usam interfaces/configurações incompatíveis entre si. |
 
-## Status
-- Gerar matriz: concluído
+## Requisitos e funcionalidades
+
+| ID | Requisito / funcionalidade | Implementação | Evidência funcional e observações | Estado |
+|---|---|---|---|---|
+| R01 | Compilar para ESP32 com PlatformIO/Arduino | `platformio.ini` | Ambiente `esp32dev`, framework Arduino e dependências de web, MQTT, sensores, FFT e FTP. | **Implementado** |
+| R02 | Inicializar sensores e periféricos | `src/main.cpp`, `src/MPU6050Handler.cpp`, `src/Encoders.cpp`, `src/Ultrasonic.cpp` | `setup()` inicializa MPU6050, encoders e pinos ultrassônicos antes de montar SPIFFS. Falha de MPU entra em espera infinita. | **Parcial** |
+| R03 | Montar SPIFFS e ler configuração JSON | `src/main.cpp`, `src/Config.cpp`, `data/config.json` | SPIFFS é montado com formatação em caso de falha; `loadConfig()` abre `/config.json` e desserializa para documento estático de 200 bytes. Os valores do documento não são usados para configurar a rede. | **Parcial** |
+| R04 | Conectar ao Wi-Fi | `src/main.cpp`, `src/Network.cpp`, `src/main_globals.cpp` | `Network::connectWiFi()` tem timeout de 10 s, mas seu retorno é ignorado e o `setup()` continua esperando conexão indefinidamente. Credenciais vêm de constantes compiladas. | **Parcial** |
+| R05 | Disponibilizar hostname e serviço mDNS | `src/main.cpp`, `src/Network.cpp`, `src/main_globals.cpp` | Inicia hostname `twinesp32`; registra `_http`/`tcp` na porta 1080. O servidor web efetivo é iniciado na porta 80. | **Parcial** |
+| R06 | Servir a interface web estática | `src/WebHandlers.cpp`, `data/index.html`, `data/style.css`, `data/script.js`, `data/*.svg` | Arquivos são servidos do SPIFFS nas rotas raiz e assets. É necessário gravar o filesystem com os dados do diretório `data/`. | **Implementado** |
+| R07 | Controlar avanço, ré, esquerda, direita e parada via HTTP | `src/WebHandlers.cpp`, `src/L9110H.cpp`, `data/index.html`, `data/script.js` | Botões enviam GET para `/frt`, `/trs`, `/esq`, `/drt` e `/stop`; cada movimento direcional dura 150 ms e para. O funcionamento físico depende da compatibilidade do hardware/pinos. | **Implementado** |
+| R08 | Controlar motores pelo driver L9110H | `src/L9110H.cpp`, `include/L9110H.h` | Métodos usam `analogWrite()` e mapeiam os dois motores para pinos no método `motor()`. Construtor configura os membros antes do mapeamento; GPIO 6/7 do motor 1 exigem validação em placa ESP32 comum. | **Parcial** |
+| R09 | Executar ação predefinida `quadrado` pela web | `src/WebHandlers.cpp`, `data/index.html`, `data/script.js` | Servidor espera `GET /action?action=quadrado`; o formulário envia POST com `input`, procura campo inexistente e usa jQuery que não está carregado. A sequência não é alcançável pelo formulário atual. | **Divergente** |
+| R10 | Contar pulsos dos encoders | `src/Encoders.cpp`, `include/Encoders.h`, `src/main_globals.cpp` | ISRs nas GPIOs 26 e 34 incrementam contadores em borda de subida; `setupEncoders()` é chamado em `setup()`. | **Implementado** |
+| R11 | Calcular RPM das rodas | `src/Encoders.cpp`, `include/Encoders.h`, `src/main.cpp` | `calcularRPMRodas()` calcula a cada 100 ms usando 20 pulsos por volta, mas não é chamado pelo `loop()`. | **Não integrado** |
+| R12 | Medir distância pelo ultrassônico | `src/Ultrasonic.cpp`, `include/Ultrasonic.h`, `src/main.cpp` | A rotina usa `pulseIn()` com timeout de 25 ms e limita valores fora de faixa, mas `readUltrasonicDistance()` não é chamada pelo `loop()`. | **Não integrado** |
+| R13 | Ler dois MPU6050 | `src/MPU6050Handler.cpp`, `src/MPUProcessing.cpp`, `src/main_globals.cpp` | MPU1 usa endereço padrão e MPU2 recebe `105` (`0x69`); ambos são processados a cada intervalo de 10 ms. | **Implementado** |
+| R14 | Calcular pitch e roll dos MPU6050 | `src/MPUProcessing.cpp`, `src/main_globals.cpp` | Calculados a partir da aceleração e ajustados por multiplicadores/offsets específicos por sensor. | **Implementado** |
+| R15 | Calcular yaw do MPU1 com bússola | `src/MPUProcessing.cpp` | Inicializa QMC5883L, aplica calibração fixa, integra giroscópio Z e combina a leitura magnética. A qualidade depende do hardware e calibração. | **Parcial** |
+| R16 | Disponibilizar orientação/yaw do MPU2 | `src/MPUProcessing.cpp`, `src/WebHandlers.cpp` | O campo `orientationZ_2` é velocidade angular Z convertida para graus/s, não yaw angular acumulado, embora a API o exponha como `yaw`. | **Parcial** |
+| R17 | Analisar vibração por FFT | `src/MPUProcessing.cpp`, `src/FFTHandler.cpp`, `src/main_globals.cpp` | Janela de 64 amostras a 100 Hz, remoção da média, janela Hamming, FFT e busca do pico dominante. Atualizado ao completar cada bloco. | **Implementado** |
+| R18 | Consultar leituras dos sensores via HTTP | `src/WebHandlers.cpp` | Endpoints de aceleração, rotação, orientação, vibração, distância e RPM. Distância/RPM permanecem desatualizados enquanto as rotinas de aquisição não forem integradas; dados JSON dos eixos são strings. | **Parcial** |
+| R19 | Conectar e reconectar ao broker MQTT | `src/MQTTHandler.cpp`, `src/main_globals.cpp`, `src/main.cpp` | PubSubClient configura broker e callback; `handleMQTT()` tenta reconectar em loop bloqueante e publica status após conectar. | **Parcial** |
+| R20 | Publicar telemetria MQTT | `src/MQTTHandler.cpp`, `src/main_globals.cpp`, `src/main.cpp` | Publica somente giroscópio do MPU1 no tópico `R/IOT/CTRL`; tentativa de publicação é checada por `millis() % 10 == 0`, não por temporizador preciso. | **Parcial** |
+| R21 | Publicar status MQTT | `src/MQTTHandler.cpp` | Publica `Online` em `home/status`; não usa a variável `topic_status` definida no estado global. | **Implementado** |
+| R22 | Receber comandos MQTT | `src/MQTTHandler.cpp` | Assina `home/commands`, mas callback só trata mensagens se tópico recebido for `R/IOT/CTRL`. | **Divergente** |
+| R23 | Disponibilizar FTP | `src/main.cpp` | `ftpSrv.begin(ssid, password)` é chamado depois do servidor web e `handleFTP()` roda no loop. A configuração efetiva depende da biblioteca SimpleFTPServer e das credenciais passadas. | **Implementado** |
+| R24 | Imprimir telemetria de diagnóstico na Serial | `src/Debug.cpp`, `src/main.cpp` | Imprime RPM, distância, orientação e vibração aproximadamente a cada 500 ms. Campos RPM/distância dependem de rotinas que atualmente não são chamadas. | **Parcial** |
+| R25 | Acessar o dispositivo remotamente via zrok | `zrok-digitaltwin.sh`, `ZROK_README.md` | Script tenta resolver `twinesp32.local` e executa `zrok reserve public` e `zrok share reserved`; depende de zrok, mDNS e compatibilidade da CLI/porta. | **Parcial** |
+| R26 | Manter estado compartilhado entre módulos | `include/main_globals.h`, `src/main_globals.cpp` | Declara objetos dos sensores, arrays FFT, resultados, contadores, credenciais e tópicos como variáveis globais. | **Implementado** |
+| R27 | Executar testes automatizados | `test/README` | Há apenas instruções genéricas do diretório de testes; nenhum teste específico do firmware está presente. | **Não integrado** |
+
+## Interfaces registradas
+
+### HTTP
+
+| Rota | Método | Função |
+|---|---|---|
+| `/`, `/style.css`, `/script.js`, `/favicon.png`, `/logo.svg`, `/line.svg`, `/upbutton.svg`, `/downbutton.svg`, `/leftbutton.svg`, `/rightbutton.svg`, `/stopbutton.svg` | GET | Arquivos estáticos servidos do SPIFFS. |
+| `/frt`, `/trs`, `/esq`, `/drt`, `/stop` | GET | Comandos de movimento e parada. |
+| `/action?action=quadrado` | GET | Sequência de movimento predefinida; formulário atual não corresponde a esta interface. |
+| `/mpu1/acceleration`, `/mpu1/rotation`, `/mpu1/orientation` | GET | Valores do MPU1. |
+| `/mpu2/acceleration`, `/mpu2/rotation`, `/mpu2/orientation` | GET | Valores do MPU2. |
+| `/mpu1/vibration_magnitude`, `/mpu1/vibration_frequency`, `/mpu1/vibration_amplitude` | GET | Resultados do MPU1. |
+| `/mpu2/vibration_magnitude`, `/mpu2/vibration_frequency`, `/mpu2/vibration_amplitude` | GET | Resultados do MPU2. |
+| `/distance`, `/rpm_dir`, `/rpm_esq` | GET | Valores do ultrassônico e encoders, atualmente sem atualização pelo loop principal. |
+
+### MQTT
+
+| Direção | Tópico | Conteúdo |
+|---|---|---|
+| Publicação | `R/IOT/CTRL` | Objeto JSON com giroscópio do MPU1. |
+| Publicação | `home/status` | Status textual `Online` na conexão. |
+| Assinatura | `home/commands` | Tópico de comando atualmente assinado. |
+| Callback | `R/IOT/CTRL` | Tópico que o callback exige antes de aceitar comandos; divergente da assinatura. |
+
+## Observações de manutenção
+
+- Credenciais de rede e MQTT existem como valores compilados no firmware; não copiá-las para documentação nem para logs públicos. Revisar também histórico Git e configurações locais antes de distribuir.
+- `data/config.json` é lido, mas seus campos não são usados para conexão Wi-Fi.
+- O ponto de acesso está comentado; é necessária uma rede Wi-Fi existente.
+- O servidor HTTP de controle não implementa autenticação. O acesso remoto pode expor comandos de movimento.
+- Confirme o mapeamento elétrico das GPIOs, sobretudo GPIO 6 e 7 em placas ESP32 com flash nessas linhas.
+- A documentação de operação e compilação está em [README.md](README.md); o guia zrok complementar é [ZROK_README.md](ZROK_README.md).

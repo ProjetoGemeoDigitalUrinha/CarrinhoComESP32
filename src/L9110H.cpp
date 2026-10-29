@@ -9,8 +9,8 @@ L9110H::L9110H() {
 void L9110H::motor(int motorNumber, String instruction, int speed) {
     switch (motorNumber) {
         case 1: {
-            pinA = 13;
-            pinB = 33;
+            pinA = 7;
+            pinB = 6;
             break;
         }
         case 2: {
