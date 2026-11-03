@@ -1,7 +1,7 @@
 #include "WebHandlers.h"
 #include "main_globals.h"
 #include <ESPAsyncWebServer.h>
-#include <SPIFFS.h>
+#include <LittleFS.h>
 #include <ArduinoJson.h>
 #include "L9110H.h"
 #include "Encoders.h"
@@ -17,9 +17,9 @@ void handleStaticFiles() {
     auto serveFile = [](const char* path, const char* type = nullptr) {
         return [=](AsyncWebServerRequest *request) {
             if (type)
-                request->send(SPIFFS, path, type);
+                request->send(LittleFS, path, type);
             else
-                request->send(SPIFFS, path);
+                request->send(LittleFS, path);
         };
     };
     server.on("/", HTTP_GET, serveFile("/index.html"));

@@ -40,16 +40,16 @@ void loop() {
 } */
 // FIM DO CÓDIGO UTILIZADO PARA CALIBRAR A BÚSSOLA
 
+#include "L9110H.h"
+#include "Encoders.h"
+#include "Ultrasonic.h"
+
 #include <Arduino.h>
-#include <SPIFFS.h>
+#include <LittleFS.h>
 #include <WiFi.h>
 #include <ArduinoJson.h>
 #include <SimpleFTPServer.h>
 #include <ESPAsyncWebServer.h>
-#include "main_globals.h"
-#include "L9110H.h"
-#include "Encoders.h"
-#include "Ultrasonic.h"
 #include "MPU6050Handler.h"
 #include "MPUProcessing.h"
 #include "FFTHandler.h"
@@ -59,10 +59,10 @@ void loop() {
 #include "Debug.h"
 #include "Network.h"
 #include <Wire.h>
+#include <main_globals.h>
 
 
 // --- OBJETOS GLOBAIS ---
-L9110H robot;
 AsyncWebServer server(80);
 FtpServer ftpSrv;
 StaticJsonDocument<200> document;
@@ -76,13 +76,14 @@ void setup() {
     MPU6050Handler::setupMPU6050s();
     setupEncoders();
     setupUltrasonic();
-    // Inicialização do SPIFFS e leitura de configuração WiFi
-    if (!SPIFFS.begin(true)) {
-        Serial.println("Can't initialize SPIFFS, please restart and try again.");
+     if (!LittleFS.begin(true)) {
+        Serial.println("Can't initialize LittleFS, please restart and try again.");
         return;
     }
     loadConfig(document);
     // Network setup
+      // Dá tempo para o core do ESP32-S3 e as tarefas do sistema (LwIP) se estabilizarem
+    delay(500); 
     Network::connectWiFi(ssid, password);
     while (!Network::isWiFiConnected()) {
         Serial.print(".");
@@ -120,6 +121,8 @@ void loop() {
     MQTTHandler::handleMQTT();
     processMPU1();
     processMPU2();
+    readUltrasonicDistance();
+    calcularRPMRodas();
     // ===================================================================================
     if (millis() % 10UL == 0UL) {
         MQTTHandler::publishSensorData();
