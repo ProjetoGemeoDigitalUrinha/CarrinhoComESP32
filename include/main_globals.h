@@ -19,6 +19,7 @@ extern float dominantVibrationAmplitude1;
 extern unsigned long lastSampleTime1;
 extern uint16_t sampleCounter1;
 extern float accelerationX_1, accelerationY_1, accelerationZ_1;
+extern float temperature_1;  // °C, sensor interno do MPU1
 extern float rotationX_1, rotationY_1, rotationZ_1;
 extern float orientationX_1, orientationY_1, orientationZ_1;
 
@@ -57,6 +58,7 @@ extern const char* mqtt_password;
 extern const char* topic_status;
 extern const char* topic_sensors;
 extern const char* topic_command;
+extern const unsigned long MQTT_PUBLISH_INTERVAL_MS;
 
 // --- Network ---
 extern const char* ssid;

@@ -32,6 +32,7 @@ float dominantVibrationAmplitude1 = 0.0;
 unsigned long lastSampleTime1 = 0;
 uint16_t sampleCounter1 = 0;
 float accelerationX_1 = 0, accelerationY_1 = 0, accelerationZ_1 = 0;
+float temperature_1 = 0;
 float rotationX_1 = 0, rotationY_1 = 0, rotationZ_1 = 0;
 float orientationX_1 = 0, orientationY_1 = 0, orientationZ_1 = 0;
 
@@ -54,6 +55,7 @@ unsigned long last_ultrasonic_read_time = 0;
 // --- OBJETOS GLOBAIS ---
 Adafruit_MPU6050 mpu1;
 Adafruit_MPU6050 mpu2;
+L9110H robot;
 
 // --- MQTT ---
 const char* mqtt_server = "mqtt.ect.ufrn.br";
@@ -63,12 +65,14 @@ const char* mqtt_password = "lar_mqtt";
 const char* topic_status = "oribot/status";
 const char* topic_sensors = "R/IOT/CTRL";
 const char* topic_command = "oribot/command";
+// Intervalo entre publicações de telemetria (o backend salva um arquivo por mensagem).
+const unsigned long MQTT_PUBLISH_INTERVAL_MS = 1000;
 
 // --- Network ---
-const char* ssid = "LAR";
-const char* password = "LAR@1480";
+const char* ssid = "inPACTA-Danilo";
+const char* password = "teste1234";
 const char* mdns_hostname = "twinesp32";
-const uint16_t mdns_port = 1080;
+const uint16_t mdns_port = 80; // mesma porta do servidor web (http://twinesp32.local/)
 const char* mdns_service = "_http";
 const char* mdns_proto = "tcp";
 const char* softap_ssid = "ORIBot002";

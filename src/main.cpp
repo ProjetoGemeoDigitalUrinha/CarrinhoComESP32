@@ -54,6 +54,7 @@ void loop() {
 #include "MPUProcessing.h"
 #include "FFTHandler.h"
 #include "WebHandlers.h"
+#include "WebSocketControl.h"
 #include "MQTTHandler.h"
 #include "Config.h"
 #include "Debug.h"
@@ -71,16 +72,21 @@ unsigned long debugLastPrintTime = 0;
 const unsigned long DEBUG_PRINT_INTERVAL_MS = 1000;
 
 void setup() {
+    robot.begin();  // primeiro de tudo: motores parados enquanto o resto inicializa
     Serial.begin(115200);
+    // Por que o ESP reiniciou (BROWNOUT = queda de tensão). Também em GET /reset_reason.
+    Serial.printf("Ultimo reset: %s\n", resetReasonText());
     // ===================================================================================
     MPU6050Handler::setupMPU6050s();
     setupEncoders();
     setupUltrasonic();
-     if (!LittleFS.begin(true)) {
-        Serial.println("Can't initialize LittleFS, please restart and try again.");
-        return;
+    // Sem LittleFS a página não é servida, mas o resto (Wi-Fi, WebSocket, sensores)
+    // continua: interromper o setup() aqui deixava o loop() rodar sem rede e travava o ESP.
+    if (LittleFS.begin(true)) {
+        loadConfig(document);
+    } else {
+        Serial.println("ERRO: LittleFS nao montou - pagina web indisponivel (rode uploadfs).");
     }
-    loadConfig(document);
     // Network setup
       // Dá tempo para o core do ESP32-S3 e as tarefas do sistema (LwIP) se estabilizarem
     delay(500); 
@@ -107,9 +113,15 @@ void setup() {
     // Serial.println("WiFi AP started!");
     // Serial.println(WiFi.softAPIP());
     // Configuração da rede WiFi para conexão externa
-    // Inicialização dos endpoints HTTP e FTP
+    // Inicialização do controle por WebSocket (/ws), dos endpoints HTTP e do FTP
+    WebSocketControl::setup(server);
     WebHandlers::setupAll();
     server.begin();
+    Serial.print("Controle: http://");
+    Serial.print(WiFi.localIP());
+    Serial.print("/  ou  http://");
+    Serial.print(mdns_hostname);
+    Serial.println(".local/");
     // ftpSrv.begin(SSID, PASSWORD);
     ftpSrv.begin(ssid , password);
     MQTTHandler::setupMQTT(MQTTHandler::mqttCallback);
@@ -118,13 +130,16 @@ void setup() {
 void loop() {
     delay(1);
     ftpSrv.handleFTP();
+    WebSocketControl::loop();
     MQTTHandler::handleMQTT();
     processMPU1();
     processMPU2();
     readUltrasonicDistance();
     calcularRPMRodas();
     // ===================================================================================
-    if (millis() % 10UL == 0UL) {
+    static unsigned long lastPublishMs = 0;
+    if (millis() - lastPublishMs >= MQTT_PUBLISH_INTERVAL_MS) {
+        lastPublishMs = millis();
         MQTTHandler::publishSensorData();
     }
     static unsigned long timeDebug = 0;

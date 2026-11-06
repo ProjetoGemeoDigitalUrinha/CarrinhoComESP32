@@ -17,6 +17,7 @@ void processMPU1() {
         rotationX_1 = g1.gyro.x;
         rotationY_1 = g1.gyro.y;
         rotationZ_1 = g1.gyro.z;
+        temperature_1 = temp1.temperature;
         float raw_pitch_1 = atan2(-accelerationX_1, sqrt(accelerationY_1 * accelerationY_1 + accelerationZ_1 * accelerationZ_1)) * 180.0 / PI;
         float raw_roll_1  = atan2(accelerationY_1, accelerationZ_1) * 180.0 / PI;
         orientationX_1 = (raw_pitch_1 * PITCH_MULTIPLIER_1) + PITCH_OFFSET_1;
@@ -27,7 +28,7 @@ void processMPU1() {
         static bool yawOffsetCalibrated = false;
         static float yawOffset = 0.0f;
         if (!compassInitialized) {
-            Wire.begin();
+            // O barramento I2C já foi iniciado em setupMPU6050s() com os pinos do shield.
             compass.init();
             compass.setCalibration(-418, 1222, 1026, 2838, -76, 1337);
             compassInitialized = true;

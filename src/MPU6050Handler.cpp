@@ -2,10 +2,11 @@
 #include <Wire.h>
 #include <Arduino.h>
 #include "main_globals.h"
+#include "Pins.h"
 
 namespace MPU6050Handler {
     void setupMPU6050s() {
-        Wire.begin();
+        Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
         Serial.println("Initializing MPU6050 sensors...");
         if (!mpu1.begin()) {
             Serial.println("Failed to find MPU6050 #1. Check connections!");

@@ -1,8 +1,9 @@
 #include "Ultrasonic.h"
 #include "main_globals.h"
+#include "Pins.h"
 
-const int TRIG_PIN = 5;
-const int ECHO_PIN = 18;
+const int TRIG_PIN = PIN_US_TRIG;
+const int ECHO_PIN = PIN_US_ECHO;
 
 // Variável para delay assíncrono do print
 static unsigned long lastDistancePrintTime = 0;

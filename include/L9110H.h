@@ -9,6 +9,9 @@ class L9110H {
     public:
       L9110H();
 
+      // Coloca as entradas da ponte H em LOW (motores parados). Chamar no início do setup().
+      void begin();
+
       void motor(int motorNumber, String instruction, int speed);
 
       void forward(int i, int seconds, bool hasStop);
@@ -23,8 +26,8 @@ class L9110H {
 
     private:
 
-    int pinA;
-    int pinB;
+    int pinA = -1;
+    int pinB = -1;
 };
 
 #endif

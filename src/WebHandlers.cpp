@@ -3,13 +3,15 @@
 #include <ESPAsyncWebServer.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
-#include "L9110H.h"
 #include "Encoders.h"
 #include "Ultrasonic.h"
+#include "Debug.h"
 
 // Externas necessárias
 extern AsyncWebServer server;
-extern L9110H robot;
+
+// Os comandos de movimento não são mais rotas HTTP: chegam pelo WebSocket /ws
+// (ver WebSocketControl.cpp). Aqui ficam só a página e as leituras dos sensores.
 
 namespace WebHandlers {
 
@@ -33,49 +35,6 @@ void handleStaticFiles() {
     server.on("/upbutton.svg", HTTP_GET, serveFile("/upbutton.svg"));
     server.on("/stopbutton.svg", HTTP_GET, serveFile("/stopbutton.svg"));
     server.on("/script.js", HTTP_GET, serveFile("/script.js"));
-}
-
-void handleRobotCommands() {
-    server.on("/frt", HTTP_GET, [](AsyncWebServerRequest *request) {
-        robot.forward(255, 150, true);
-        Serial.println("command frt");
-        request->send(204);
-    });
-    server.on("/trs", HTTP_GET, [](AsyncWebServerRequest *request) {
-        robot.backward(255, 150, true);
-        Serial.println("command trs");
-        request->send(204);
-    });
-    server.on("/esq", HTTP_GET, [](AsyncWebServerRequest *request) {
-        robot.left(255, 150, true);
-        Serial.println("command esq");
-        request->send(204);
-    });
-    server.on("/drt", HTTP_GET, [](AsyncWebServerRequest *request) {
-        robot.right(255, 150, true);
-        Serial.println("command drt");
-        request->send(204);
-    });
-    server.on("/stop", HTTP_GET, [](AsyncWebServerRequest* request) {
-        robot.stop();
-        Serial.println("command stop");
-        request->send(204);
-    });
-    server.on("/action", HTTP_GET, [](AsyncWebServerRequest *request) {
-        if (request->hasParam("action")) {
-            String action = request->getParam("action")->value();
-            request->send(204);
-            if (action == "quadrado") {
-                for (int i = 0; i < 4; ++i) {
-                    robot.forward(255, 2000, true);
-                    delay(2000);
-                    robot.right(255, 300, true);
-                    delay(2000);
-                }
-                robot.stop();
-            }
-        }
-    });
 }
 
 void handleVibrationEndpoints() {
@@ -147,9 +106,18 @@ void handleEncoderRpmEndpoints() {
     });
 }
 
+// Diagnóstico sem cabo USB: abrir http://<ip>/reset_reason no celular.
+void handleDiagnosticEndpoints() {
+    server.on("/reset_reason", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain; charset=utf-8",
+                      String("Ultimo reset: ") + resetReasonText() +
+                      "\nLigado ha " + String(millis() / 1000) + " s");
+    });
+}
+
 void setupAll() {
     handleStaticFiles();
-    handleRobotCommands();
+    handleDiagnosticEndpoints();
     handleVibrationEndpoints();
     handleMPU6050DataEndpoints();
     handleUltrasonicEndpoint();

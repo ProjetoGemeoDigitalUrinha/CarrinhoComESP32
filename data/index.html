@@ -23,7 +23,7 @@
               <span class="second-word">UM ROBÔ POR ALUNO</span>
             </h1>
             <div class="name-comando"><span>Digite um comando </span></div>
-            <input type="text" placeholder="Escreva seu comando aqui..." />
+            <input type="text" name="action" placeholder="Ex.: quadrado" autocomplete="off" />
             <button type="submit" class="custom-button">Enviar</button>
           </form>
         </div>
@@ -33,9 +33,10 @@
       </div>
       <div class="right">
         <h1>CONTROLE</h1>
+        <div id="ws-status" class="ws-status ws-off">Desconectado</div>
         <div class="icons">
           <div class="icons-top">
-            <button class="btns-frontb" onclick="move('/frt');">
+            <button class="btns-frontb" type="button" data-cmd="frt">
               <img
                 src="upbutton.svg"
                 alt="Sinais Controles"
@@ -44,21 +45,21 @@
             </button>
           </div>
           <div class="icons-center">
-            <button class="btns-leftb" onclick="move('/esq');">
+            <button class="btns-leftb" type="button" data-cmd="esq">
               <img
                 src="leftbutton.svg"
                 alt="Sinais Controles"
                 class="icons-image"
               />
             </button>
-            <button class="btns-stopb" onclick="move('/stop');">
+            <button class="btns-stopb" type="button" data-cmd="stop">
               <img
                 src="stopbutton.svg"
                 alt="Sinais Controles"
                 class="icons-image"
               />
             </button>
-            <button class="btns-rightb" onclick="move('/drt');">
+            <button class="btns-rightb" type="button" data-cmd="drt">
               <img
                 src="rightbutton.svg"
                 alt="Sinais Controles"
@@ -67,7 +68,7 @@
             </button>
           </div>
           <div class="icons-botton">
-            <button class="btns-backb" onclick="move('/trs');">
+            <button class="btns-backb" type="button" data-cmd="trs">
               <img
                 src="downbutton.svg"
                 alt="Sinais Controles"

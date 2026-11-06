@@ -2,7 +2,7 @@
 
 Firmware PlatformIO/Arduino para um carrinho robótico baseado em ESP32. O firmware controla dois motores, disponibiliza uma interface web na rede local, coleta dados de sensores e inclui integrações com MQTT, FTP e mDNS.
 
-> **Estado da implementação:** este guia descreve o comportamento encontrado no código, não apenas as funções previstas. Algumas partes — como leitura do ultrassônico, cálculo de RPM e formulário de ações — estão parcialmente conectadas ou não são atualizadas pelo loop atual. Consulte [Limitações conhecidas](#limitações-conhecidas) e a [matriz de rastreabilidade](TRACEABILITY_MATRIX.md).
+> **Estado da implementação:** este guia descreve o comportamento encontrado no código, não apenas as funções previstas. Algumas partes, como o RPM das rodas (sem encoders no shield REV 4.0), não estão disponíveis no hardware atual. Consulte [Limitações conhecidas](#limitações-conhecidas) e a [matriz de rastreabilidade](TRACEABILITY_MATRIX.md).
 
 ## Sumário
 
@@ -12,10 +12,10 @@ Firmware PlatformIO/Arduino para um carrinho robótico baseado em ESP32. O firmw
 - [Dependências](#dependências)
 - [Compilação e gravação](#compilação-e-gravação)
 - [Inicialização e operação](#inicialização-e-operação)
+- [Controle por WebSocket](#controle-por-websocket)
 - [Interface HTTP](#interface-http)
 - [MQTT](#mqtt)
 - [Configuração](#configuração)
-- [Acesso remoto com zrok](#acesso-remoto-com-zrok)
 - [Diagnóstico](#diagnóstico)
 - [Limitações conhecidas](#limitações-conhecidas)
 - [Documentação complementar](#documentação-complementar)
@@ -25,7 +25,7 @@ Firmware PlatformIO/Arduino para um carrinho robótico baseado em ESP32. O firmw
 O ESP32 é o controlador central. Os módulos de firmware compartilham leituras e configurações declaradas em `main_globals`, enquanto `main.cpp` inicializa os componentes e coordena as tarefas periódicas.
 
 ```text
-Navegador ── HTTP :80 ───────────────┐
+Navegador ── HTTP :80 + WebSocket /ws ┐
 Broker MQTT ── Wi-Fi ────────────────┤
 FTP ── Wi-Fi ────────────────────────┤
                                      v
@@ -40,19 +40,21 @@ FTP ── Wi-Fi ─────────────────────
 ### Fluxo de inicialização
 
 1. Inicia Serial a 115200 baud.
-2. Inicializa os dois MPU6050, os encoders e os pinos do sensor ultrassônico.
-3. Monta SPIFFS e tenta ler `/config.json`.
+2. Inicializa o I²C (SDA 8 / SCL 9), os dois MPU6050 e os pinos do sensor ultrassônico.
+3. Monta LittleFS e tenta ler `/config.json`.
 4. Conecta ao Wi-Fi usando valores compilados no firmware.
-5. Inicia mDNS com hostname `twinesp32` e registra o serviço `_http`/`tcp` na porta configurada como 1080.
-6. Aguarda 10 segundos; em seguida, registra as rotas HTTP e inicia o servidor na porta 80, o FTP e a configuração MQTT.
+5. Inicia mDNS com hostname `twinesp32` e registra o serviço `_http`/`tcp` na porta 80.
+6. Aguarda 10 segundos; em seguida, registra o WebSocket `/ws` (e inicia a tarefa dos motores) e as rotas HTTP, inicia o servidor na porta 80, o FTP e a configuração MQTT. O endereço da página de controle é impresso na Serial.
 
-No `loop()`, chama o processamento do FTP e MQTT e processa os dois MPU6050. Também verifica a condição de publicação MQTT e imprime um resumo serial aproximadamente a cada 500 ms. As funções de leitura do ultrassônico e cálculo de RPM não são chamadas nesse loop.
+No `loop()`, chama o processamento do FTP, do WebSocket e do MQTT, processa os dois MPU6050 e lê o ultrassônico. Também verifica a condição de publicação MQTT e imprime um resumo serial aproximadamente a cada 500 ms.
 
 ### Fluxo dos comandos de movimento
 
-- Os botões da página fazem requisições HTTP GET às rotas direcionais.
-- Cada rota chama a classe `L9110H` com velocidade 255 e duração de 150 ms; depois, o método para os motores.
-- O MQTT contém tratamento para comandos equivalentes, mas há divergência entre o tópico assinado e o tópico verificado no callback. Portanto, essa via não está funcional de ponta a ponta no estado atual.
+- O celular (ou PC) e o ESP32 precisam estar na **mesma rede Wi-Fi**. A página é aberta em `http://<IP-do-ESP32>/` ou `http://twinesp32.local/`.
+- A página abre um WebSocket em `ws://<IP-do-ESP32>/ws` e envia comandos de texto (ver [Controle por WebSocket](#controle-por-websocket)).
+- O carrinho anda **enquanto o botão estiver pressionado** e para ao soltar. A página repete o comando a cada 150 ms; se nenhum comando chegar em 500 ms, o firmware para os motores sozinho.
+- Os comandos são aplicados por uma tarefa FreeRTOS dedicada (`motorTask`, em `src/WebSocketControl.cpp`), independente do `loop()`. Assim, a parada por timeout funciona mesmo que o loop esteja ocupado.
+- Não há mais rotas HTTP de movimento, e o MQTT não aciona os motores.
 
 ### Fluxo dos dados inerciais
 
@@ -71,38 +73,38 @@ Cada MPU é consultado com intervalo mínimo de 10 ms (100 Hz). O firmware atual
 | `src/L9110H.cpp`, `include/L9110H.h` | Comandos de direção e PWM dos dois motores. |
 | `src/MPU6050Handler.cpp`, `src/MPUProcessing.cpp` | Inicialização e processamento dos sensores inerciais e da bússola. |
 | `src/FFTHandler.cpp` | Processamento FFT da magnitude de aceleração. |
-| `src/Encoders.cpp` | Interrupções dos encoders e cálculo de RPM. |
+| `include/Pins.h` | Pinagem do shield REV 4.0 para o ESP32-S3-DevKitC-1 (única definição de GPIOs). |
+| `src/Encoders.cpp` | Cálculo de RPM; desativado porque o shield REV 4.0 não tem encoders. |
 | `src/Ultrasonic.cpp` | Inicialização e rotina de leitura do sensor ultrassônico. |
-| `src/WebHandlers.cpp` | Arquivos estáticos e endpoints HTTP. |
+| `src/WebHandlers.cpp` | Arquivos estáticos e endpoints HTTP de telemetria. |
+| `src/WebSocketControl.cpp`, `include/WebSocketControl.h` | WebSocket `/ws`, protocolo de comandos e tarefa que aciona os motores (com parada por timeout). |
 | `src/MQTTHandler.cpp` | Conexão, publicação e callback MQTT. |
-| `src/Network.cpp`, `src/Config.cpp` | Helpers de rede e leitura do JSON no SPIFFS. |
+| `src/Network.cpp`, `src/Config.cpp` | Helpers de rede e leitura do JSON no LittleFS. |
 | `src/Debug.cpp` | Resumo periódico enviado à Serial. |
 | `data/` | Arquivos da interface web e `config.json`, destinados ao filesystem do dispositivo. |
 | `include/HCSR04/` | Biblioteca local HCSR04 e exemplos; não é usada pela rotina ativa do ultrassônico, que usa GPIO diretamente. |
 | `test/` | Diretório reservado para testes PlatformIO; não há testes automatizados do projeto atualmente. |
-| `zrok-digitaltwin.sh` | Script Linux para tentar criar/ativar um compartilhamento zrok para o dispositivo. |
 
 ## Hardware e conexões
 
-As GPIOs abaixo são os valores encontrados no código e devem ser confirmadas no circuito real antes de energizar o robô.
+Placa: **ESP32-S3-DevKitC-1** montada no shield **"Projeto Gêmeo Digital" REV 4.0** (EasyEDA, URA). A pinagem segue o esquemático do shield e está centralizada em [`include/Pins.h`](include/Pins.h), que é o único lugar onde os GPIOs são definidos.
 
-| Componente | GPIO/configuração atual | Observações |
-|---|---|---|
-| Driver L9110H, motor 1 | 7 e 6 | O arquivo atual atribui esses pinos ao motor 1. Em placas ESP32 comuns, GPIO 6–11 são associadas à memória flash; valide a placa e a fiação, pois esses pinos podem não estar disponíveis para uso geral. |
-| Driver L9110H, motor 2 | 14 e 23 | Atribuídos no método `motor()`. |
-| Encoder direita | 26 | Contagem por interrupção na borda de subida. |
-| Encoder esquerda | 34 | Contagem por interrupção na borda de subida; GPIO 34 é somente entrada no ESP32. |
-| Ultrassônico TRIG | 5 | Configurado como saída. |
-| Ultrassônico ECHO | 18 | Configurado como entrada. Verifique a compatibilidade dos níveis lógicos do ECHO com o ESP32. |
-| MPU6050 #1 | I²C, endereço padrão da biblioteca | Inicializado por `mpu1.begin()`. |
-| MPU6050 #2 | I²C, endereço `0x69` | Inicializado por `mpu2.begin(105)`; exige configuração de endereço correspondente no pino AD0. |
-| Bússola QMC5883L | I²C | Inicializada durante o processamento do MPU1. |
+| Componente | Sinal no esquemático | GPIO | Observações |
+|---|---|---|---|
+| L9110S (U3), motor 1 | A1_A / A1_B | 7 / 6 | Canal A da ponte H. |
+| L9110S (U3), motor 2 | B1_A / B1_B | 4 / 5 | Canal B da ponte H. |
+| Barramento I²C | SDA / SCL | 8 / 9 | Compartilhado por MPU-1, MPU-2 e bússola. |
+| MPU6050 #1 (J2) | I²C | — | Endereço `0x68` (AD0 sem ligação). |
+| MPU6050 #2 (J3) | I²C | — | Endereço `0x69` (pino 5 do J3, AD0, ligado a 3V3). |
+| Bússola (U5) | I²C | — | Footprint HMC5883L; o módulo usado é QMC5883L (`0x0D`). DRDY não conectado. |
+| HC-SR04 (U2) | TRIG / ECHO | 13 / 14 | ECHO passa pelo divisor R3 1k / R4 2k (5 V → 3,3 V). Alimentado por Vin. |
+| Encoders das rodas | — | — | **Não existem no shield REV 4.0.** O firmware não registra interrupções, e o RPM fica em 0. |
 
-Os dois MPU6050 e a bússola compartilham o barramento I²C. Confirme alimentação, terra comum, endereços e pull-ups segundo os módulos usados. O construtor de `L9110H` configura os pinos antes de `motor()` atribuir os números de GPIO; essa inicialização merece revisão junto com o mapeamento de pinos.
+Alimentação: o MT3608 (U4) gera Vin, que alimenta o pino 5V da DevKitC-1, a ponte H e o HC-SR04. MPUs e bússola usam 3V3. Os pinos do driver são configurados pelo `analogWrite()` no primeiro comando de cada motor. Se uma roda girar no sentido errado, inverta os fios do motor no borne da ponte H.
 
 ## Dependências
 
-O projeto usa o ambiente `[env:esp32dev]` do PlatformIO, com framework Arduino e placa `esp32dev`. As bibliotecas declaradas em `platformio.ini` incluem:
+O projeto usa o ambiente `[env:esp32dev]` do PlatformIO (o nome do ambiente é histórico), com framework Arduino e placa `esp32-s3-devkitc-1`. As bibliotecas declaradas em `platformio.ini` incluem:
 
 - ESPAsyncWebServer e AsyncTCP;
 - ArduinoJson;
@@ -126,14 +128,14 @@ pio run -e esp32dev
 # Gravar o firmware (ajuste a porta se necessário)
 pio run -e esp32dev -t upload
 
-# Gravar os arquivos da pasta data/ no filesystem SPIFFS
+# Gravar os arquivos da pasta data/ no filesystem LittleFS
 pio run -e esp32dev -t uploadfs
 
 # Abrir o monitor serial a 115200 baud
 pio device monitor -b 115200
 ```
 
-O firmware serve arquivos a partir do SPIFFS, portanto a interface web precisa estar gravada no filesystem. A opção `SPIFFS.begin(true)` solicita formatação se a montagem falhar; uma falha de montagem pode apagar os arquivos existentes ao tentar recuperá-la.
+O firmware serve arquivos a partir do LittleFS (`board_build.filesystem = littlefs` no `platformio.ini`), portanto a interface web precisa estar gravada no filesystem. **Sempre que alterar algo em `data/`, rode `uploadfs` de novo.** A opção `LittleFS.begin(true)` formata a partição se a montagem falhar, o que apaga os arquivos existentes.
 
 ## Inicialização e operação
 
@@ -141,27 +143,44 @@ O firmware serve arquivos a partir do SPIFFS, portanto a interface web precisa e
 2. Configure as credenciais de rede e do broker no firmware **sem publicá-las em repositórios ou documentação**.
 3. Compile e grave o firmware; grave também o filesystem com `uploadfs`.
 4. Abra o monitor serial, reinicie a placa e acompanhe inicialização dos sensores, conexão Wi-Fi e endereço IP.
-5. Acesse `http://<IP-do-ESP32>/` na mesma rede.
-6. Para parar o robô, use o botão de parada ou a rota `/stop`.
+5. Conecte o celular na **mesma rede Wi-Fi** do ESP32 e acesse `http://<IP-do-ESP32>/` (ou `http://twinesp32.local/`, se o celular resolver mDNS; no Android isso nem sempre funciona, então prefira o IP).
+6. Confira se o indicador abaixo de "CONTROLE" mostra **Conectado** (verde).
+7. Segure um botão de direção para andar. Soltar, tocar em parar, trocar de aba ou bloquear a tela para o carrinho. No PC, as setas do teclado também funcionam (espaço ou Esc param).
 
 O firmware não inicia seu ponto de acesso Wi-Fi no estado atual: o trecho de `WiFi.softAP()` está comentado. O dispositivo depende de uma rede Wi-Fi existente. Se um MPU6050 não for encontrado, a inicialização entra em espera infinita; se o Wi-Fi não conectar, o `setup()` também permanece esperando.
 
+## Controle por WebSocket
+
+Endpoint: `ws://<IP-do-ESP32>/ws` (mesma porta 80 do servidor web). As mensagens são de texto simples:
+
+| Mensagem | Ação |
+|---|---|
+| `frt` | Frente. |
+| `trs` | Ré. |
+| `esq` | Gira à esquerda. |
+| `drt` | Gira à direita. |
+| `stop` | Para os motores. |
+| `quadrado` | Executa 4× (anda 2 s, pausa 2 s, gira 300 ms, pausa 2 s), sem bloquear o firmware. Qualquer outro comando interrompe a sequência. |
+
+Regras:
+
+- Os comandos de direção valem por **500 ms**. Para manter o movimento, o cliente precisa reenviar o comando antes disso (a página reenvia a cada 150 ms).
+- Quando um cliente WebSocket desconecta, o carrinho para.
+- Comandos desconhecidos recebem como resposta `erro:comando desconhecido:<texto>`.
+- A velocidade é fixa em PWM 255 (`MOTOR_SPEED` em `src/WebSocketControl.cpp`).
+
+O campo "Digite um comando" da página envia o texto digitado pelo WebSocket (por exemplo, `quadrado`).
+
+Teste rápido sem a página, pelo console do navegador aberto em `http://<IP>/`:
+
+```js
+const s = new WebSocket("ws://" + location.host + "/ws");
+s.onopen = () => s.send("quadrado");
+```
+
 ## Interface HTTP
 
-O servidor assíncrono escuta na porta **80**. As requisições de leitura são GET. A página web contém botões direcionais; as rotas estão registradas em `src/WebHandlers.cpp`.
-
-### Controle
-
-| Método e rota | Ação |
-|---|---|
-| `GET /frt` | Avança por 150 ms e para. |
-| `GET /trs` | Recua por 150 ms e para. |
-| `GET /esq` | Vira à esquerda por 150 ms e para. |
-| `GET /drt` | Vira à direita por 150 ms e para. |
-| `GET /stop` | Para os motores. |
-| `GET /action?action=quadrado` | Executa uma sequência de quatro lados e giros; a rotina usa esperas bloqueantes. Não é acionada corretamente pelo formulário atual da página. |
-
-Os parâmetros de duração passados aos métodos do motor são usados diretamente por `delay()`, que recebe milissegundos, apesar do nome `seconds` usado no código.
+O servidor assíncrono escuta na porta **80** e serve a página e as leituras dos sensores (GET). As rotas estão registradas em `src/WebHandlers.cpp`. Não há rotas HTTP de movimento: o controle é feito apenas pelo WebSocket.
 
 ### Telemetria HTTP
 
@@ -173,10 +192,10 @@ Os parâmetros de duração passados aos métodos do motor são usados diretamen
 | `/mpu1/vibration_magnitude`, `/mpu2/vibration_magnitude` | Texto simples com magnitude calculada. |
 | `/mpu1/vibration_frequency`, `/mpu2/vibration_frequency` | Texto simples com frequência dominante da última janela FFT. |
 | `/mpu1/vibration_amplitude`, `/mpu2/vibration_amplitude` | Texto simples com amplitude dominante da última janela FFT. |
-| `/distance` | Texto simples com a variável de distância; no loop atual ela não é atualizada pela rotina do sensor. |
-| `/rpm_dir`, `/rpm_esq` | Texto simples com RPM; no loop atual o cálculo de RPM não é chamado. |
+| `/distance` | Texto simples com a distância do ultrassônico em cm (0 sem eco). |
+| `/rpm_dir`, `/rpm_esq` | Texto simples com RPM; sempre 0 no shield REV 4.0, que não tem encoders. |
 
-O HTML e CSS ficam em `data/index.html` e `data/style.css`. Os botões direcionais enviam GET usando `XMLHttpRequest`. Já o formulário usa jQuery sem carregar a biblioteca, procura um campo `name="action"` que não existe no HTML e envia POST com o campo `input`, enquanto o firmware espera GET com `action`. Consequentemente, o formulário não aciona a ação prevista.
+O HTML, o CSS e o JavaScript ficam em `data/index.html`, `data/style.css` e `data/script.js`. O script não depende de bibliotecas externas, então a página funciona numa rede local sem internet.
 
 ## MQTT
 
@@ -184,14 +203,27 @@ O cliente usa PubSubClient sobre Wi-Fi e tenta se conectar ao broker configurado
 
 | Operação | Tópico atual | Conteúdo/estado |
 |---|---|---|
-| Publicar telemetria | `R/IOT/CTRL` (valor de `topic_sensors`) | JSON com `gyroscope.x`, `.y`, `.z` do MPU1. |
+| Publicar telemetria | `R/IOT/CTRL` (valor de `topic_sensors`) | JSON único com `accelerometer`, `gyroscope` e `temperature` (MPU1) e `Ultrassonic.distance`, a cada `MQTT_PUBLISH_INTERVAL_MS` (1 s). |
 | Publicar status | `home/status` | Texto `Online` após conectar. |
 | Assinar comandos | `home/commands` | Assinatura efetuada após conexão MQTT. |
-| Verificar comandos no callback | `R/IOT/CTRL` | O callback compara o tópico recebido com esse valor e reconhece `frt`, `trs`, `esq`, `drt` e `stop`. |
+| Callback | qualquer tópico assinado | Apenas registra a mensagem na Serial; **não move o carrinho**. |
 
-A assinatura (`home/commands`) não corresponde ao tópico que o callback aceita (`R/IOT/CTRL`); comandos MQTT, portanto, não completam o fluxo configurado. A variável `topic_command` existe, mas não é usada para assinar o tópico. A tentativa de reconexão MQTT é bloqueante e repete a conexão enquanto não tiver sucesso.
+O MQTT é usado só para telemetria e status; a movimentação é exclusiva do WebSocket. Se o broker não estiver acessível, o firmware tenta reconectar a cada 5 s sem travar o `loop()`. Cada tentativa ainda pode segurar o loop por alguns segundos (timeout de conexão TCP), mas isso não afeta os motores, que são controlados por uma tarefa separada.
 
-O loop verifica `millis() % 10 == 0` para publicar telemetria; isso não é um agendamento periódico preciso e pode disparar mais de uma publicação no mesmo intervalo de milissegundo.
+Formato da telemetria:
+
+```json
+{
+  "accelerometer": { "x": 0.00, "y": 0.00, "z": 0.00 },
+  "gyroscope":     { "x": 0.00, "y": 0.00, "z": 0.00 },
+  "temperature": 25.5,
+  "Ultrassonic": { "distance": 100.23 }
+}
+```
+
+- Aceleração em m/s², giroscópio em rad/s e temperatura em °C (sensor interno do MPU1).
+- `distance` está em cm; vale 0 quando o sensor não recebe eco (fora de 2–400 cm).
+- O intervalo é fixo (`MQTT_PUBLISH_INTERVAL_MS`, 1 s) porque o backend grava um arquivo por mensagem; sem broker conectado nada é publicado.
 
 ## Configuração
 
@@ -208,45 +240,37 @@ O arquivo existente em `data/` contém valores que devem ser tratados como crede
 
 Antes de compartilhar o projeto, remova ou substitua credenciais reais já existentes no código e revise o histórico do repositório. Esta documentação intencionalmente não reproduz esses valores.
 
-## Acesso remoto com zrok
-
-O script `zrok-digitaltwin.sh` tenta resolver `twinesp32.local` com `getent` e, como alternativa, `avahi-resolve`; depois executa comandos `zrok reserve public` e `zrok share reserved`. É necessário ter zrok instalado, habilitado e o dispositivo acessível na rede local por mDNS.
-
-O servidor web escuta na porta 80, enquanto o firmware anuncia o serviço mDNS na porta 1080. Confirme a porta/target do compartilhamento e a sintaxe do CLI zrok para a versão instalada antes de depender do acesso remoto. Expor o servidor para fora da rede também expõe as rotas de movimento, que não têm autenticação implementada no firmware.
-
-Consulte [ZROK_README.md](ZROK_README.md) para os passos e pré-requisitos descritos para o script. Esse guia também deve ser conferido quanto à compatibilidade com a versão atual do zrok.
-
 ## Diagnóstico
 
 - **Inicialização travada antes do Wi-Fi:** verifique os dois MPU6050 no I²C e o endereço do segundo dispositivo.
 - **Não aparece endereço IP:** confirme rede, disponibilidade do ponto de acesso e credenciais configuradas no firmware. O código espera conexão sem limite de tempo.
-- **Página não abre:** confirme IP/mesma rede, servidor na porta 80 e gravação dos arquivos SPIFFS com `uploadfs`.
-- **Página abre sem assets:** regrave o filesystem e verifique Serial/SPIFFS.
+- **Página não abre:** confirme que o celular está na mesma rede Wi-Fi, use o IP impresso na Serial (em vez de `twinesp32.local`) e verifique se os arquivos foram gravados com `uploadfs`. Redes com isolamento de clientes (comum em Wi-Fi de visitantes) bloqueiam o acesso entre aparelhos.
+- **Página abre sem assets:** regrave o filesystem e verifique a Serial/LittleFS.
+- **Indicador fica "Desconectado":** o WebSocket `/ws` não conectou. Confira a Serial (`WebSocket: cliente #N conectado`) e recarregue a página.
+- **Carrinho para sozinho enquanto o botão está pressionado:** os comandos estão chegando com mais de 500 ms de intervalo (Wi-Fi fraco). Aproxime-se do roteador ou aumente `COMMAND_TIMEOUT_MS` em `src/WebSocketControl.cpp`.
 - **Comandos dos motores não funcionam:** confira alimentação do driver, sentido dos motores, PWM e compatibilidade física das GPIOs selecionadas.
-- **RPM ou distância permanecem em zero:** as rotinas `calcularRPMRodas()` e `readUltrasonicDistance()` ainda precisam ser chamadas periodicamente.
-- **MQTT sem conexão:** confirme Wi-Fi, host/porta e configuração do broker. As tentativas atuais são bloqueantes.
-- **Comandos MQTT não acionam o robô:** verifique a divergência entre tópico assinado e tópico testado no callback.
+- **RPM permanece em zero:** esperado, porque o shield REV 4.0 não tem encoders.
+- **Distância permanece em zero:** confira o HC-SR04 em TRIG 13 / ECHO 14, a alimentação Vin e o divisor R3/R4. Leituras fora de 0–400 cm são zeradas.
+- **MQTT sem conexão:** confirme Wi-Fi, host/porta e configuração do broker. O controle por WebSocket funciona mesmo sem broker.
 - **Leituras da bússola/yaw inconsistentes:** confira o módulo QMC5883L, a calibração fixa e a orientação física do sensor.
 
-O resumo serial periódico é produzido por `src/Debug.cpp`. Ele inclui RPM e distância, mas esses campos não são necessariamente atuais enquanto suas funções de aquisição não estiverem integradas ao loop.
+O resumo serial periódico é produzido por `src/Debug.cpp`.
 
 ## Limitações conhecidas
 
-1. O cálculo de RPM e a leitura ultrassônica estão implementados, mas não são chamados pelo loop principal.
-2. Os comandos MQTT têm divergência de tópico entre assinatura e callback.
-3. O formulário de ação web não corresponde ao HTML, ao JavaScript carregado e ao método/parâmetro esperados pelo servidor.
+1. O shield REV 4.0 não tem encoders, então o RPM das rodas não é medido.
+2. A movimentação só é aceita pelo WebSocket; MQTT e HTTP não movem o carrinho.
+3. Com vários celulares conectados ao mesmo tempo, todos controlam o carrinho, e a desconexão de qualquer um deles para os motores.
 4. O MPU2 informa taxa angular como yaw, não orientação acumulada.
 5. Credenciais de Wi-Fi e MQTT estão definidas diretamente em arquivos de código; o JSON não as substitui no fluxo atual.
-6. O servidor não implementa autenticação nas rotas HTTP de controle.
-7. As GPIOs 6 e 7 do motor 1 são potencialmente incompatíveis com placas ESP32 comuns; valide contra o hardware efetivo.
-8. O construtor do driver configura pinos antes da seleção feita pelo método `motor()`.
-9. Falhas ao encontrar os MPU6050 e ao conectar ao Wi-Fi bloqueiam a inicialização sem uma estratégia de recuperação.
-10. Não há suíte de testes automatizados do firmware no diretório `test/`.
+6. O WebSocket de controle não tem autenticação: qualquer aparelho na mesma rede Wi-Fi pode mover o carrinho.
+7. O sentido de rotação de cada motor depende de como os fios estão no borne da ponte H; o firmware assume o motor 1 no canal A e o motor 2 no canal B.
+8. Falhas ao encontrar os MPU6050 e ao conectar ao Wi-Fi bloqueiam a inicialização sem uma estratégia de recuperação.
+9. Não há suíte de testes automatizados do firmware no diretório `test/`.
 
 Esses pontos são descrições do estado atual para orientar manutenção; este documento não altera nem corrige o firmware.
 
 ## Documentação complementar
 
 - [Matriz de rastreabilidade](TRACEABILITY_MATRIX.md): relação entre funcionalidades/requisitos, módulos e estado de implementação.
-- [Guia de acesso remoto zrok](ZROK_README.md): instruções específicas do script de compartilhamento.
 - [Configuração PlatformIO](platformio.ini): placa, framework e dependências.

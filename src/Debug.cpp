@@ -2,6 +2,20 @@
 #include "main_globals.h"
 #include <Arduino.h>
 
+const char* resetReasonText() {
+    switch (esp_reset_reason()) {
+        case ESP_RST_POWERON:  return "POWERON (ligado na alimentacao)";
+        case ESP_RST_BROWNOUT: return "BROWNOUT (queda de tensao - alimentacao fraca)";
+        case ESP_RST_PANIC:    return "PANIC (erro de software)";
+        case ESP_RST_INT_WDT:
+        case ESP_RST_TASK_WDT:
+        case ESP_RST_WDT:      return "WATCHDOG (travamento de software)";
+        case ESP_RST_SW:       return "SOFTWARE (esp_restart)";
+        case ESP_RST_EXT:      return "EXTERNO (botao RST)";
+        default:               return "OUTRO";
+    }
+}
+
 void printDebug() {
     Serial.println("------ ENCODERS ------");
     Serial.print("RPM Direita : ");

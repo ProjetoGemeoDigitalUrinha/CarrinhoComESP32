@@ -1,8 +1,10 @@
 #include "Encoders.h"
 #include "main_globals.h"
 
-#define ENCODER_DIR_PIN 26
-#define ENCODER_ESQ_PIN 34
+// O shield REV 4.0 (ver include/Pins.h) não tem conexão para os encoders das
+// rodas, então nenhuma interrupção é registrada e rpmDir/rpmEsq ficam em 0.
+// Quando o hardware tiver os encoders, defina os pinos em Pins.h e faça o
+// attachInterrupt() de isrEncoderDir/isrEncoderEsq em setupEncoders().
 const int PPR_ENCODER = 20;
 
 static volatile long lastEncoderDirCount = 0;
@@ -37,8 +39,5 @@ void calcularRPMRodas() {
 }
 
 void setupEncoders() {
-    pinMode(ENCODER_DIR_PIN, INPUT);
-    pinMode(ENCODER_ESQ_PIN, INPUT);
-    attachInterrupt(digitalPinToInterrupt(ENCODER_DIR_PIN), isrEncoderDir, RISING);
-    attachInterrupt(digitalPinToInterrupt(ENCODER_ESQ_PIN), isrEncoderEsq, RISING);
+    Serial.println("Encoders: sem conexao no shield REV 4.0 - RPM desativado.");
 }
