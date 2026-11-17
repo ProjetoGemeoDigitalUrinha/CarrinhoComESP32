@@ -21,6 +21,7 @@ AsyncWebSocket ws("/ws");
 portMUX_TYPE cmdMux = portMUX_INITIALIZER_UNLOCKED;
 Cmd pendingCmd = Cmd::NONE;
 uint32_t lastCmdMs = 0;
+volatile uint8_t activeCmdCode = static_cast<uint8_t>(Cmd::STOP);
 
 // Mesma sequência da antiga rota /action?action=quadrado, agora sem bloquear:
 // cada lado = anda 2 s, pausa 2 s, gira 300 ms, pausa 2 s.
@@ -76,8 +77,11 @@ void motorTask(void*) {
     // evita inverter o sentido de giro em velocidade máxima (outro pico de corrente).
     auto setMotion = [&](Cmd cmd) {
         current = cmd;
+        activeCmdCode = static_cast<uint8_t>(cmd);
         speed = 0;
         robot.stop();
+        // Diagnóstico: registra cada troca de movimento aplicada aos motores.
+        Serial.printf("Motor: %s\n", WebSocketControl::activeCommandName());
     };
 
     robot.stop();
@@ -180,6 +184,23 @@ void loop() {
         lastCleanupMs = millis();
         ws.cleanupClients();
     }
+}
+
+const char* activeCommandName() {
+    switch (static_cast<Cmd>(activeCmdCode)) {
+        case Cmd::FORWARD:  return "frt";
+        case Cmd::BACKWARD: return "trs";
+        case Cmd::LEFT:     return "esq";
+        case Cmd::RIGHT:    return "drt";
+        default:            return "stop";
+    }
+}
+
+bool handleTextCommand(const char* msg) {
+    Cmd cmd = parseCommand(msg);
+    if (cmd == Cmd::NONE) return false;
+    postCommand(cmd);
+    return true;
 }
 
 } // namespace WebSocketControl

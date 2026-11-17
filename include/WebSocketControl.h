@@ -23,6 +23,12 @@ namespace WebSocketControl {
 
     // Chamar no loop(): libera clientes WebSocket desconectados.
     void loop();
+
+    // Retorna o comando atualmente aplicado aos motores ("stop", "frt", "trs", "esq", "drt").
+    const char* activeCommandName();
+
+    // Envia um comando textual ("frt", "trs", "esq", "drt", "stop", "quadrado") para a motorTask.
+    bool handleTextCommand(const char* msg);
 }
 
 #endif

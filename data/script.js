@@ -93,8 +93,21 @@ document.querySelectorAll("button[data-cmd]").forEach(function (btn) {
   });
 });
 
-// --- Setas do teclado (PC) ---
-const KEY_CMDS = { ArrowUp: "frt", ArrowDown: "trs", ArrowLeft: "esq", ArrowRight: "drt" };
+// --- Setas do teclado e WASD (PC) ---
+const KEY_CMDS = {
+  ArrowUp: "frt",
+  ArrowDown: "trs",
+  ArrowLeft: "esq",
+  ArrowRight: "drt",
+  w: "frt",
+  W: "frt",
+  s: "trs",
+  S: "trs",
+  a: "esq",
+  A: "esq",
+  d: "drt",
+  D: "drt",
+};
 
 document.addEventListener("keydown", function (e) {
   if (e.target.tagName === "INPUT") return;

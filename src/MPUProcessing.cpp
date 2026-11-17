@@ -6,6 +6,14 @@
 
 QMC5883LCompass compass; // É QMC5883L NA VERDADE. VERSÃO CHINESA FALSIFICADA DO HMC5883L. PASSARAM A PERNA
 
+static TelemetryWindow telemetryWindow = {};
+
+TelemetryWindow consumeMpu1TelemetryWindow() {
+    TelemetryWindow w = telemetryWindow;
+    telemetryWindow = {};
+    return w;
+}
+
 void processMPU1() {
     if (micros() - lastSampleTime1 >= (1000000 / SAMPLING_FREQ)) {
         lastSampleTime1 = micros();
@@ -18,6 +26,14 @@ void processMPU1() {
         rotationY_1 = g1.gyro.y;
         rotationZ_1 = g1.gyro.z;
         temperature_1 = temp1.temperature;
+
+        telemetryWindow.ax += accelerationX_1;
+        telemetryWindow.ay += accelerationY_1;
+        telemetryWindow.az += accelerationZ_1;
+        telemetryWindow.gx += rotationX_1;
+        telemetryWindow.gy += rotationY_1;
+        telemetryWindow.gz += rotationZ_1;
+        telemetryWindow.n++;
         float raw_pitch_1 = atan2(-accelerationX_1, sqrt(accelerationY_1 * accelerationY_1 + accelerationZ_1 * accelerationZ_1)) * 180.0 / PI;
         float raw_roll_1  = atan2(accelerationY_1, accelerationZ_1) * 180.0 / PI;
         orientationX_1 = (raw_pitch_1 * PITCH_MULTIPLIER_1) + PITCH_OFFSET_1;

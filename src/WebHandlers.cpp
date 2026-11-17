@@ -6,6 +6,7 @@
 #include "Encoders.h"
 #include "Ultrasonic.h"
 #include "Debug.h"
+#include "WebSocketControl.h"
 
 // Externas necessárias
 extern AsyncWebServer server;
@@ -115,9 +116,22 @@ void handleDiagnosticEndpoints() {
     });
 }
 
+// Rotas HTTP de fallback caso o LittleFS ainda tenha a página antiga (antes do uploadfs).
+void handleLegacyMotionEndpoints() {
+    const char* cmds[] = {"frt", "trs", "esq", "drt", "stop", "quadrado"};
+    for (const char* cmd : cmds) {
+        String route = String("/") + cmd;
+        server.on(route.c_str(), HTTP_GET, [cmd](AsyncWebServerRequest *request) {
+            WebSocketControl::handleTextCommand(cmd);
+            request->send(200, "text/plain", "OK");
+        });
+    }
+}
+
 void setupAll() {
     handleStaticFiles();
     handleDiagnosticEndpoints();
+    handleLegacyMotionEndpoints();
     handleVibrationEndpoints();
     handleMPU6050DataEndpoints();
     handleUltrasonicEndpoint();

@@ -14,12 +14,11 @@
 //  SCL  (I2C)           |   9  | 15
 //  TRIG (HC-SR04)       |  13  | 19
 //  ECHO (HC-SR04)       |  14  | 20  (via divisor 1k/2k: 5 V -> 3,3 V)
+//  ENC_ESQ (Encoder E)  |  47  | 24
+//  ENC_DIR (Encoder D)  |  48  | 25
 //
 // Barramento I2C (SDA/SCL): MPU-1 (J2, 0x68), MPU-2 (J3, AD0 em 3V3 -> 0x69)
 // e bússola U5 (footprint HMC5883L; o módulo usado é QMC5883L, 0x0D).
-//
-// Encoders das rodas: o shield REV 4.0 NÃO possui conexão para encoders,
-// por isso nenhum pino é definido para eles (ver Encoders.cpp).
 
 // --- Ponte H L9110S (U3) ---
 // Motor 1 = canal A, Motor 2 = canal B
@@ -35,5 +34,9 @@ constexpr int PIN_I2C_SCL = 9;
 // --- Ultrassônico HC-SR04 (U2) ---
 constexpr int PIN_US_TRIG = 13;
 constexpr int PIN_US_ECHO = 14;
+
+// --- Encoders das rodas ---
+constexpr int PIN_ENCODER_ESQ = 47;
+constexpr int PIN_ENCODER_DIR = 48;
 
 #endif

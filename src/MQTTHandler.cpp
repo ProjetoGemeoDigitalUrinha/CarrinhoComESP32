@@ -1,17 +1,23 @@
 #include "MQTTHandler.h"
 #include "main_globals.h"
+#include "MPUProcessing.h"
+#include "WebSocketControl.h"
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <ArduinoJson.h>
 
-// Telemetria publicada em topic_sensors (um único JSON por mensagem):
+// Telemetria publicada em topic_sensors (Payload v2 com encoders):
 // {
-//   "accelerometer": { "x": 0.00, "y": 0.00, "z": 0.00 },   // m/s², MPU1
-//   "gyroscope":     { "x": 0.00, "y": 0.00, "z": 0.00 },   // rad/s, MPU1
-//   "temperature": 25.5,                                    // °C, MPU1
-//   "Ultrassonic": { "distance": 100.23 }
+//   "t_ms": 123456,
+//   "avg": true,
+//   "cmd": "frt",
+//   "accelerometer": { "x": 0.12, "y": -0.03, "z": 9.79 },   // m/s², média da janela MPU1
+//   "gyroscope":     { "x": 0.00, "y": 0.01, "z": 1.52 },    // rad/s, média da janela MPU1
+//   "temperature": 25.5,                                     // °C, MPU1
+//   "Ultrassonic": { "distance": 63.40 },                    // cm; 0 sem eco
+//   "rpmEsq": 0.00,
+//   "rpmDir": 0.00
 // }
-// "distance" em cm; 0 quando não há eco (fora de 2-400 cm).
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
@@ -25,6 +31,7 @@ namespace MQTTHandler {
         Serial.printf("MQTT [%s]: %s\n", topic, msg.c_str());
     }
     void setupMQTT(std::function<void (char *, uint8_t *, unsigned int)> callback) {
+        mqttClient.setBufferSize(512);
         mqttClient.setServer(mqtt_server, mqtt_port);
         mqttClient.setCallback(callback);
     }
@@ -50,21 +57,36 @@ namespace MQTTHandler {
     void publishSensorData() {
         if (!mqttClient.connected()) return;
 
+        TelemetryWindow w = consumeMpu1TelemetryWindow();
+        bool hasWindow = (w.n > 0);
+        float ax = hasWindow ? (w.ax / w.n) : accelerationX_1;
+        float ay = hasWindow ? (w.ay / w.n) : accelerationY_1;
+        float az = hasWindow ? (w.az / w.n) : accelerationZ_1;
+        float gx = hasWindow ? (w.gx / w.n) : rotationX_1;
+        float gy = hasWindow ? (w.gy / w.n) : rotationY_1;
+        float gz = hasWindow ? (w.gz / w.n) : rotationZ_1;
+
         StaticJsonDocument<384> doc;
+        doc["t_ms"] = millis();
+        doc["avg"] = hasWindow;
+        doc["cmd"] = WebSocketControl::activeCommandName();
+
         // serialized(String(v, 2)) mantém o valor como número, com 2 casas decimais.
         JsonObject accel = doc.createNestedObject("accelerometer");
-        accel["x"] = serialized(String(accelerationX_1, 2));
-        accel["y"] = serialized(String(accelerationY_1, 2));
-        accel["z"] = serialized(String(accelerationZ_1, 2));
+        accel["x"] = serialized(String(ax, 2));
+        accel["y"] = serialized(String(ay, 2));
+        accel["z"] = serialized(String(az, 2));
         JsonObject gyro = doc.createNestedObject("gyroscope");
-        gyro["x"] = serialized(String(rotationX_1, 2));
-        gyro["y"] = serialized(String(rotationY_1, 2));
-        gyro["z"] = serialized(String(rotationZ_1, 2));
+        gyro["x"] = serialized(String(gx, 2));
+        gyro["y"] = serialized(String(gy, 2));
+        gyro["z"] = serialized(String(gz, 2));
         doc["temperature"] = serialized(String(temperature_1, 1));
         JsonObject us = doc.createNestedObject("Ultrassonic");
         us["distance"] = serialized(String(distance_cm, 2));
+        doc["rpmEsq"] = serialized(String(rpmEsq, 2));
+        doc["rpmDir"] = serialized(String(rpmDir, 2));
 
-        char payload[256];
+        char payload[384];
         size_t len = serializeJson(doc, payload, sizeof(payload));
         mqttClient.publish(topic_sensors, reinterpret_cast<const uint8_t*>(payload), len);
     }

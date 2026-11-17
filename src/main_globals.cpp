@@ -65,12 +65,12 @@ const char* mqtt_password = "lar_mqtt";
 const char* topic_status = "oribot/status";
 const char* topic_sensors = "R/IOT/CTRL";
 const char* topic_command = "oribot/command";
-// Intervalo entre publicações de telemetria (o backend salva um arquivo por mensagem).
-const unsigned long MQTT_PUBLISH_INTERVAL_MS = 1000;
+// Intervalo entre publicações de telemetria MQTT (100 ms = 10 Hz no Payload v2 com log NDJSON).
+const unsigned long MQTT_PUBLISH_INTERVAL_MS = 100;
 
 // --- Network ---
-const char* ssid = "inPACTA-Danilo";
-const char* password = "teste1234";
+const char* ssid = "Team";
+const char* password = "12345678";
 const char* mdns_hostname = "twinesp32";
 const uint16_t mdns_port = 80; // mesma porta do servidor web (http://twinesp32.local/)
 const char* mdns_service = "_http";

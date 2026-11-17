@@ -2,7 +2,7 @@
 
 Firmware PlatformIO/Arduino para um carrinho robótico baseado em ESP32. O firmware controla dois motores, disponibiliza uma interface web na rede local, coleta dados de sensores e inclui integrações com MQTT, FTP e mDNS.
 
-> **Estado da implementação:** este guia descreve o comportamento encontrado no código, não apenas as funções previstas. Algumas partes, como o RPM das rodas (sem encoders no shield REV 4.0), não estão disponíveis no hardware atual. Consulte [Limitações conhecidas](#limitações-conhecidas) e a [matriz de rastreabilidade](TRACEABILITY_MATRIX.md).
+> **Estado da implementação:** este guia descreve o comportamento encontrado no código, incluindo os encoders nas GPIOs 47 (esquerdo) e 48 (direito) e o Payload v2 de telemetria MQTT. Consulte [Limitações conhecidas](#limitações-conhecidas) e a [matriz de rastreabilidade](TRACEABILITY_MATRIX.md).
 
 ## Sumário
 
@@ -73,8 +73,8 @@ Cada MPU é consultado com intervalo mínimo de 10 ms (100 Hz). O firmware atual
 | `src/L9110H.cpp`, `include/L9110H.h` | Comandos de direção e PWM dos dois motores. |
 | `src/MPU6050Handler.cpp`, `src/MPUProcessing.cpp` | Inicialização e processamento dos sensores inerciais e da bússola. |
 | `src/FFTHandler.cpp` | Processamento FFT da magnitude de aceleração. |
-| `include/Pins.h` | Pinagem do shield REV 4.0 para o ESP32-S3-DevKitC-1 (única definição de GPIOs). |
-| `src/Encoders.cpp` | Cálculo de RPM; desativado porque o shield REV 4.0 não tem encoders. |
+| `include/Pins.h` | Pinagem do shield REV 4.0 e encoders (GPIOs 47 e 48) para o ESP32-S3-DevKitC-1 (única definição de GPIOs). |
+| `src/Encoders.cpp` | Contagem de pulsos por interrupção (GPIO 47 esq / GPIO 48 dir) e cálculo de RPM das rodas. |
 | `src/Ultrasonic.cpp` | Inicialização e rotina de leitura do sensor ultrassônico. |
 | `src/WebHandlers.cpp` | Arquivos estáticos e endpoints HTTP de telemetria. |
 | `src/WebSocketControl.cpp`, `include/WebSocketControl.h` | WebSocket `/ws`, protocolo de comandos e tarefa que aciona os motores (com parada por timeout). |
@@ -98,7 +98,7 @@ Placa: **ESP32-S3-DevKitC-1** montada no shield **"Projeto Gêmeo Digital" REV 4
 | MPU6050 #2 (J3) | I²C | — | Endereço `0x69` (pino 5 do J3, AD0, ligado a 3V3). |
 | Bússola (U5) | I²C | — | Footprint HMC5883L; o módulo usado é QMC5883L (`0x0D`). DRDY não conectado. |
 | HC-SR04 (U2) | TRIG / ECHO | 13 / 14 | ECHO passa pelo divisor R3 1k / R4 2k (5 V → 3,3 V). Alimentado por Vin. |
-| Encoders das rodas | — | — | **Não existem no shield REV 4.0.** O firmware não registra interrupções, e o RPM fica em 0. |
+| Encoders das rodas | ENC_ESQ / ENC_DIR | 47 / 48 | Interrupções em borda de subida (`RISING`, `INPUT_PULLUP`), 20 pulsos por volta (`PPR_ENCODER = 20`). |
 
 Alimentação: o MT3608 (U4) gera Vin, que alimenta o pino 5V da DevKitC-1, a ponte H e o HC-SR04. MPUs e bússola usam 3V3. Os pinos do driver são configurados pelo `analogWrite()` no primeiro comando de cada motor. Se uma roda girar no sentido errado, inverta os fios do motor no borne da ponte H.
 
@@ -193,7 +193,7 @@ O servidor assíncrono escuta na porta **80** e serve a página e as leituras do
 | `/mpu1/vibration_frequency`, `/mpu2/vibration_frequency` | Texto simples com frequência dominante da última janela FFT. |
 | `/mpu1/vibration_amplitude`, `/mpu2/vibration_amplitude` | Texto simples com amplitude dominante da última janela FFT. |
 | `/distance` | Texto simples com a distância do ultrassônico em cm (0 sem eco). |
-| `/rpm_dir`, `/rpm_esq` | Texto simples com RPM; sempre 0 no shield REV 4.0, que não tem encoders. |
+| `/rpm_dir`, `/rpm_esq` | Texto simples com o RPM das rodas direita (GPIO 48) e esquerda (GPIO 47). |
 
 O HTML, o CSS e o JavaScript ficam em `data/index.html`, `data/style.css` e `data/script.js`. O script não depende de bibliotecas externas, então a página funciona numa rede local sem internet.
 
@@ -203,27 +203,34 @@ O cliente usa PubSubClient sobre Wi-Fi e tenta se conectar ao broker configurado
 
 | Operação | Tópico atual | Conteúdo/estado |
 |---|---|---|
-| Publicar telemetria | `R/IOT/CTRL` (valor de `topic_sensors`) | JSON único com `accelerometer`, `gyroscope` e `temperature` (MPU1) e `Ultrassonic.distance`, a cada `MQTT_PUBLISH_INTERVAL_MS` (1 s). |
+| Publicar telemetria | `R/IOT/CTRL` (valor de `topic_sensors`) | JSON Payload v2 com `t_ms`, `avg`, `cmd`, médias de `accelerometer` e `gyroscope` (MPU1), `temperature`, `Ultrassonic.distance`, `rpmEsq` e `rpmDir`, a cada `MQTT_PUBLISH_INTERVAL_MS` (100 ms / 10 Hz). |
 | Publicar status | `home/status` | Texto `Online` após conectar. |
 | Assinar comandos | `home/commands` | Assinatura efetuada após conexão MQTT. |
 | Callback | qualquer tópico assinado | Apenas registra a mensagem na Serial; **não move o carrinho**. |
 
 O MQTT é usado só para telemetria e status; a movimentação é exclusiva do WebSocket. Se o broker não estiver acessível, o firmware tenta reconectar a cada 5 s sem travar o `loop()`. Cada tentativa ainda pode segurar o loop por alguns segundos (timeout de conexão TCP), mas isso não afeta os motores, que são controlados por uma tarefa separada.
 
-Formato da telemetria:
+Formato da telemetria (Payload v2):
 
 ```json
 {
-  "accelerometer": { "x": 0.00, "y": 0.00, "z": 0.00 },
-  "gyroscope":     { "x": 0.00, "y": 0.00, "z": 0.00 },
+  "t_ms": 123456,
+  "avg": true,
+  "cmd": "frt",
+  "accelerometer": { "x": 0.12, "y": -0.03, "z": 9.79 },
+  "gyroscope":     { "x": 0.00, "y": 0.01, "z": 1.52 },
   "temperature": 25.5,
-  "Ultrassonic": { "distance": 100.23 }
+  "Ultrassonic": { "distance": 63.40 },
+  "rpmEsq": 0.00,
+  "rpmDir": 0.00
 }
 ```
 
+- `t_ms` traz `millis()` local; `avg` indica média da janela acumulada a 100 Hz do MPU1; `cmd` traz o comando ativo (`stop`, `frt`, `trs`, `esq`, `drt`).
 - Aceleração em m/s², giroscópio em rad/s e temperatura em °C (sensor interno do MPU1).
 - `distance` está em cm; vale 0 quando o sensor não recebe eco (fora de 2–400 cm).
-- O intervalo é fixo (`MQTT_PUBLISH_INTERVAL_MS`, 1 s) porque o backend grava um arquivo por mensagem; sem broker conectado nada é publicado.
+- `rpmEsq` e `rpmDir` trazem a rotação em RPM das rodas esquerda (GPIO 47) e direita (GPIO 48).
+- O buffer do `PubSubClient` é ajustado para 512 bytes (`mqttClient.setBufferSize(512)`).
 
 ## Configuração
 

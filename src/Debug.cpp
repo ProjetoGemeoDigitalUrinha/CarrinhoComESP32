@@ -17,12 +17,21 @@ const char* resetReasonText() {
 }
 
 void printDebug() {
+    noInterrupts();
+    long pulsesEsq = encoderEsqCount;
+    long pulsesDir = encoderDirCount;
+    interrupts();
+
     Serial.println("------ ENCODERS ------");
-    Serial.print("RPM Direita : ");
-    Serial.print(rpmDir, 2);
-    Serial.print(" | RPM Esquerda : ");
+    Serial.print("Encoder Esq (GPIO 47): ");
+    Serial.print(pulsesEsq);
+    Serial.print(" pulsos (");
     Serial.print(rpmEsq, 2);
-    Serial.println(" rpm");
+    Serial.print(" rpm) | Encoder Dir (GPIO 48): ");
+    Serial.print(pulsesDir);
+    Serial.print(" pulsos (");
+    Serial.print(rpmDir, 2);
+    Serial.println(" rpm)");
     Serial.println("----------------------");
 
     Serial.println("---- ULTRASSÔNICO ----");
