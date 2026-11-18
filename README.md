@@ -203,7 +203,7 @@ O cliente usa PubSubClient sobre Wi-Fi e tenta se conectar ao broker configurado
 
 | Operação | Tópico atual | Conteúdo/estado |
 |---|---|---|
-| Publicar telemetria | `R/IOT/CTRL` (valor de `topic_sensors`) | JSON Payload v2 com `t_ms`, `avg`, `cmd`, médias de `accelerometer` e `gyroscope` (MPU1), `temperature`, `Ultrassonic.distance`, `rpmEsq` e `rpmDir`, a cada `MQTT_PUBLISH_INTERVAL_MS` (100 ms / 10 Hz). |
+| Publicar telemetria | `R/IOT/CTRL` (valor de `topic_sensors`) | JSON Payload v2 com `t_ms`, `ts`, `time`, `avg`, `cmd`, médias de `accelerometer` e `gyroscope` (MPU1), `temperature`, `Ultrassonic.distance`, `rpmEsq` e `rpmDir`, a cada `MQTT_PUBLISH_INTERVAL_MS` (100 ms / 10 Hz). |
 | Publicar status | `home/status` | Texto `Online` após conectar. |
 | Assinar comandos | `home/commands` | Assinatura efetuada após conexão MQTT. |
 | Callback | qualquer tópico assinado | Apenas registra a mensagem na Serial; **não move o carrinho**. |
@@ -215,6 +215,8 @@ Formato da telemetria (Payload v2):
 ```json
 {
   "t_ms": 123456,
+  "ts": 1795014300123,
+  "time": "2026-11-18T14:05:00.123-03:00",
   "avg": true,
   "cmd": "frt",
   "accelerometer": { "x": 0.12, "y": -0.03, "z": 9.79 },
@@ -227,6 +229,7 @@ Formato da telemetria (Payload v2):
 ```
 
 - `t_ms` traz `millis()` local; `avg` indica média da janela acumulada a 100 Hz do MPU1; `cmd` traz o comando ativo (`stop`, `frt`, `trs`, `esq`, `drt`).
+- `ts` (Unix em ms, UTC) e `time` (ISO 8601, hora de Brasília) trazem o horário real do envio, sincronizado por NTP (`a.st1.ntp.br` / `pool.ntp.org`) logo após o Wi-Fi conectar. Até a primeira sincronização os dois vão como `null`.
 - Aceleração em m/s², giroscópio em rad/s e temperatura em °C (sensor interno do MPU1).
 - `distance` está em cm; vale 0 quando o sensor não recebe eco (fora de 2–400 cm).
 - `rpmEsq` e `rpmDir` trazem a rotação em RPM das rodas esquerda (GPIO 47) e direita (GPIO 48).

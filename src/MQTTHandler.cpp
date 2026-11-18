@@ -2,6 +2,7 @@
 #include "main_globals.h"
 #include "MPUProcessing.h"
 #include "WebSocketControl.h"
+#include "Network.h"
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <ArduinoJson.h>
@@ -9,6 +10,8 @@
 // Telemetria publicada em topic_sensors (Payload v2 com encoders):
 // {
 //   "t_ms": 123456,
+//   "ts": 1795014300123,                     // Unix ms (UTC) via NTP; null se não sincronizado
+//   "time": "2026-11-18T14:05:00.123-03:00", // ISO 8601 local; null se não sincronizado
 //   "avg": true,
 //   "cmd": "frt",
 //   "accelerometer": { "x": 0.12, "y": -0.03, "z": 9.79 },   // m/s², média da janela MPU1
@@ -66,8 +69,18 @@ namespace MQTTHandler {
         float gy = hasWindow ? (w.gy / w.n) : rotationY_1;
         float gz = hasWindow ? (w.gz / w.n) : rotationZ_1;
 
-        StaticJsonDocument<384> doc;
+        StaticJsonDocument<512> doc;
         doc["t_ms"] = millis();
+        // Horário real (NTP) do momento do envio. Enquanto o relógio não sincroniza,
+        // os dois campos vão como null (t_ms continua valendo para intervalos).
+        char isoTime[32];
+        if (Network::isoTimestamp(isoTime, sizeof(isoTime))) {
+            doc["ts"] = Network::epochMillis();  // Unix em ms (UTC)
+            doc["time"] = isoTime;               // ISO 8601, hora local
+        } else {
+            doc["ts"] = nullptr;
+            doc["time"] = nullptr;
+        }
         doc["avg"] = hasWindow;
         doc["cmd"] = WebSocketControl::activeCommandName();
 
@@ -86,7 +99,7 @@ namespace MQTTHandler {
         doc["rpmEsq"] = serialized(String(rpmEsq, 2));
         doc["rpmDir"] = serialized(String(rpmDir, 2));
 
-        char payload[384];
+        char payload[448];
         size_t len = serializeJson(doc, payload, sizeof(payload));
         mqttClient.publish(topic_sensors, reinterpret_cast<const uint8_t*>(payload), len);
     }

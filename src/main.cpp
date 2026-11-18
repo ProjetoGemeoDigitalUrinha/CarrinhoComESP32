@@ -99,6 +99,8 @@ void setup() {
     Serial.println("WiFi connected!");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
+    // Relógio real para o horário da telemetria MQTT (sincroniza em segundo plano).
+    Network::beginNTP(ntp_timezone, ntp_server1, ntp_server2);
     while (!Network::beginMDNS(mdns_hostname)) {
         Serial.println("Error setting up MDNS responder!");
     }

@@ -77,3 +77,9 @@ const char* mdns_service = "_http";
 const char* mdns_proto = "tcp";
 const char* softap_ssid = "ORIBot002";
 const char* softap_password = "l9110ura";
+
+// --- Relógio (NTP) ---
+// Fuso de Brasília (UTC-3, sem horário de verão) no formato POSIX.
+const char* ntp_timezone = "<-03>3";
+const char* ntp_server1 = "a.st1.ntp.br";
+const char* ntp_server2 = "pool.ntp.org";

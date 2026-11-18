@@ -69,4 +69,9 @@ extern const char* mdns_service;
 extern const char* mdns_proto;
 extern const char* softap_ssid;
 extern const char* softap_password;
+
+// --- Relógio (NTP) ---
+extern const char* ntp_timezone;
+extern const char* ntp_server1;
+extern const char* ntp_server2;
 #endif

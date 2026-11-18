@@ -222,6 +222,9 @@
  .pio/libdeps/esp32dev/ESPAsyncWebServer-esphome/src/AsyncWebSocket.h \
  .pio/libdeps/esp32dev/ESPAsyncWebServer-esphome/src/AsyncWebSynchronization.h \
  .pio/libdeps/esp32dev/ESPAsyncWebServer-esphome/src/AsyncEventSource.h \
+ include/Network.h \
+ /home/pedro/.platformio/packages/framework-arduinoespressif32@3.20017.241212+sha.dcc1105b/libraries/ESPmDNS/src/ESPmDNS.h \
+ /home/pedro/.platformio/packages/framework-arduinoespressif32@3.20017.241212+sha.dcc1105b/tools/sdk/esp32s3/include/mdns/include/mdns.h \
  .pio/libdeps/esp32dev/PubSubClient/src/PubSubClient.h \
  .pio/libdeps/esp32dev/ArduinoJson/src/ArduinoJson.h \
  .pio/libdeps/esp32dev/ArduinoJson/src/ArduinoJson.hpp \
